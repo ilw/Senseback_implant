@@ -5,7 +5,7 @@ export OUTPUT_FILENAME
 MAKEFILE_NAME := $(MAKEFILE_LIST)
 MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) ) 
 
-TEMPLATE_PATH = ../../../../../../components/toolchain/gcc
+TEMPLATE_PATH = ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc
 ifeq ($(OS),Windows_NT)
 include $(TEMPLATE_PATH)/Makefile.windows
 else
@@ -37,43 +37,46 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 
 #source common to all targets
 C_SOURCE_FILES += \
-$(abspath ../../../../../../components/toolchain/system_nrf52.c) \
-$(abspath ../../../main.c) \
-$(abspath ../../../flashwriting.c) \
-$(abspath ../../../../../../components/drivers_nrf/delay/nrf_delay.c) \
-$(abspath ../../../../../../components/drivers_nrf/common/nrf_drv_common.c) \
-$(abspath ../../../../../../components/drivers_nrf/spi_master/nrf_drv_spi.c) \
-$(abspath ../../../../../../components/drivers_nrf/gpiote/nrf_drv_gpiote.c) \
-$(abspath ../../../../../../components/properitary_rf/esb/nrf_esb.c) \
-$(abspath ../../../../../../components/libraries/util/app_error.c) \
-$(abspath ../../../../../../components/libraries/util/app_error_weak.c) \
-$(abspath ../../../../../../components/libraries/util/app_util_platform.c) \
-$(abspath ../../../../../../components/libraries/util/nrf_assert.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/system_nrf52.c) \
+$(abspath ../../../src/main.c) \
+$(abspath ../../../src/flashwriting.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/delay/nrf_delay.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/common/nrf_drv_common.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/spi_master/nrf_drv_spi.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/gpiote/nrf_drv_gpiote.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/properitary_rf/esb/nrf_esb.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error_weak.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_util_platform.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/nrf_assert.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  += \
-$(abspath ../../../../../../components/toolchain/gcc/gcc_startup_nrf52.s) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc/gcc_startup_nrf52.s) \
 
 #includes common to all targets
-INC_PATHS += -I$(abspath ../../../../../../components/toolchain/gcc)
-INC_PATHS += -I$(abspath ../../../../../../components/toolchain)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain)
 INC_PATHS += -I$(abspath ../../..)
-INC_PATHS += -I$(abspath ../../../incbin-master)
-INC_PATHS += -I$(abspath ../../../../../../examples/bsp)
-INC_PATHS += -I$(abspath ../../../../../../components/device)
+INC_PATHS += -I$(abspath ../../../resources/)
+INC_PATHS += -I$(abspath ../../../src/)
+INC_PATHS += -I$(abspath ../../../external/incbin-master)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/examples/bsp)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/device)
 INC_PATHS += -I$(abspath ../../config)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/common)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/config)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/delay)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/hal)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/nrf_soc_nosd)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/spi_master)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/timer)
-INC_PATHS += -I$(abspath ../../../../../../components/drivers_nrf/gpiote)
-INC_PATHS += -I$(abspath ../../../../../../components/libraries/uart)
-INC_PATHS += -I$(abspath ../../../../../../components/libraries/util)
-INC_PATHS += -I$(abspath ../../../../../../components/properitary_rf/esb)
-INC_PATHS += -I$(abspath ../../../../../../components/toolchain/CMSIS/Include)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/common)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/config)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/delay)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/hal)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/nrf_soc_nosd)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/spi_master)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/timer)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/gpiote)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/uart)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/properitary_rf/esb)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/CMSIS/Include)
+
 
 
 OBJECT_DIRECTORY = _build
@@ -99,7 +102,7 @@ CFLAGS += -DNRF52_PAN_64
 CFLAGS += -DNRF52_PAN_55
 CFLAGS += -DNRF52_PAN_62
 CFLAGS += -DNRF52_PAN_63
-CFLAGS += -DBOARD_PCA10040
+CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DNRF52
 CFLAGS += -DBSP_DEFINES_ONLY
 CFLAGS += -mcpu=cortex-m4
@@ -136,7 +139,7 @@ ASMFLAGS += -DNRF52_PAN_64
 ASMFLAGS += -DNRF52_PAN_55
 ASMFLAGS += -DNRF52_PAN_62
 ASMFLAGS += -DNRF52_PAN_63
-ASMFLAGS += -DBOARD_PCA10040
+ASMFLAGS += -DBOARD_CUSTOM
 ASMFLAGS += -DNRF52
 ASMFLAGS += -DBSP_DEFINES_ONLY
 

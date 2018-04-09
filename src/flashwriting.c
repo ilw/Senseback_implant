@@ -87,7 +87,7 @@ void init_flash(int erase)
 		for (j=0; j<(71339/pg_size + 1);j++)
 		{
 			// Set address:
-			addr = (uint32_t *)(start_addr + j*pg_size/4);
+			addr = (uint32_t *)(start_addr + j*pg_size/4); //Divide by 4 because address is a count of 32 bit words and pg_size is a count of bytes
 			// Erase page:
 			flash_page_erase(addr);
 		}
