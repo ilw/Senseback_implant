@@ -49,6 +49,9 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_erro
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error_weak.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_util_platform.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/nrf_assert.c) \
+$(abspath ../../../external/RTT/SEGGER_RTT.c) \
+$(abspath ../../../external/RTT/SEGGER_RTT_printf.c) \
+$(abspath ../../../external/Syscalls/RTT_Syscalls_GCC.c) \
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  += \
@@ -58,9 +61,11 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc/gcc_start
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain)
 INC_PATHS += -I$(abspath ../../..)
-INC_PATHS += -I$(abspath ../../../resources/)
-INC_PATHS += -I$(abspath ../../../src/)
+INC_PATHS += -I$(abspath ../../../resources)
+INC_PATHS += -I$(abspath ../../../src)
 INC_PATHS += -I$(abspath ../../../external/incbin-master)
+INC_PATHS += -I$(abspath ../../../external/RTT)
+INC_PATHS += -I$(abspath ../../../external/Syscalls)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/examples/bsp)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/device)
 INC_PATHS += -I$(abspath ../../config)

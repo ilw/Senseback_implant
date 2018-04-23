@@ -36,9 +36,24 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>external</name>
+			<type>2</type>
+			<location>D:/Senseback/Implant/external</location>
+		</link>
+		<link>
 			<name>nRF_Drivers</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
+			<name>resources</name>
+			<type>2</type>
+			<location>D:/Senseback/Implant/resources</location>
+		</link>
+		<link>
+			<name>src</name>
+			<type>2</type>
+			<location>D:/Senseback/Implant/src</location>
 		</link>
 		<link>
 			<name>Application/main.c</name>

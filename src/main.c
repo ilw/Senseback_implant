@@ -16,6 +16,8 @@
 #define CDONE 3
 #define FPGA_RESET_PIN 2
 
+#define CHIP_RESET_PIN 23
+
 
 //Include SDK files
 #include <stdbool.h>
@@ -35,6 +37,9 @@
 #include "boards.h"
 #include "incbin.h"
 #include "flashwriting.h"
+#include "SEGGER_RTT.h"
+
+
 
 INCBIN(FPGAimg, "FPGAimage.bin");
 
@@ -193,6 +198,7 @@ void config_FPGA(int newimage_flag)
 	nrf_gpio_pin_dir_set(CDONE,NRF_GPIO_PIN_DIR_INPUT);
 
 
+
 	// Clear SSEL and CS_Reset
 	nrf_gpio_pin_clear(SPI_CS_PIN2);
 	nrf_gpio_pin_clear(CS_RESET_B);
@@ -283,7 +289,8 @@ void spi_transaction() {
 		}
 		nrf_drv_spi_transfer(&spi, m_tx_buf, m_length, m_rx_buf, m_length);
 
-		if (m_rx_buf[0] == 0x00 && m_rx_buf[1] == 0x00) {
+		if(false){
+		//if (m_rx_buf[0] == 0x00 && m_rx_buf[1] == 0x00) {
 			//Data is all zeroes, do nothing
 		}
 		else {
@@ -321,10 +328,12 @@ int main(void)
 		unsigned int fpgaimage_intcount = 0;
 		uint32_t tmp = 0;
 
+		SEGGER_RTT_Init();
 	//Start clocks and init ESB
 	clocks_start();
 	esb_init();
 
+	nrf_gpio_pin_dir_set(CHIP_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
 	init_flash(0); //Call the function to initialize flash variables (start address location etc) without erasing any flash.
 	nrf_gpio_pin_dir_set(FPGA_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
 	nrf_gpio_pin_set(FPGA_RESET_PIN);
@@ -335,8 +344,10 @@ int main(void)
 		config_FPGA(0);
 	}
 	nrf_gpio_pin_clear(FPGA_RESET_PIN);
+	nrf_gpio_pin_clear(CHIP_RESET_PIN);
 	nrf_delay_ms(3);
 	nrf_gpio_pin_set(FPGA_RESET_PIN);
+	nrf_gpio_pin_set(CHIP_RESET_PIN);
 
 	//Initialize SPI
     nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
@@ -378,6 +389,7 @@ int main(void)
 					//Transfer data to intermediate buffer
 					int length = rx_payload.length/2;
 
+					SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip",length);
 					for (i=0;i<length;i++) {
 						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i];
 						spibuffer_w_ptr++;
@@ -452,6 +464,7 @@ int main(void)
 							//Reset command: received when TX is booted, or when manual reset of RX is needed.
 							//Reset actions: reset FPGA, reset chip, flush RX and TX FIFO, reinitialize SPI, set FIFO counter to 0
 							//Note: can be done with full reset of MCU
+							nrf_gpio_pin_clear(CHIP_RESET_PIN);
 							nrf_delay_ms(200);
 							NVIC_SystemReset();
 						}
