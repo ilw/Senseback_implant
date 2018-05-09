@@ -123,13 +123,13 @@ void esb_init( void )
     nrf_esb_config.retransmit_count			= 5;
     //nrf_esb_config.retransmit_delay			= 500;
 
-    nrf_esb_init(&nrf_esb_config);
+    APP_ERROR_CHECK(nrf_esb_init(&nrf_esb_config));
 
-    nrf_esb_set_base_address_0(base_addr_0);
+    APP_ERROR_CHECK(nrf_esb_set_base_address_0(base_addr_0));
 
-    nrf_esb_set_base_address_1(base_addr_1);
+    APP_ERROR_CHECK(nrf_esb_set_base_address_1(base_addr_1));
 
-    nrf_esb_set_prefixes(addr_prefix, 8);
+    APP_ERROR_CHECK(nrf_esb_set_prefixes(addr_prefix, 8));
 }
 
 void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
@@ -138,6 +138,7 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
 	if (spitransaction_flag == 0) {
 	spitransaction_flag = 1;
 	}
+
 }
 
 //{ FPGA PROGRAMMING FUNCTIONS
@@ -269,6 +270,7 @@ void config_FPGA(int newimage_flag)
 void spi_transaction() {
 	int i;
 	while (spibuffer_sz > 0 || nrf_drv_gpiote_in_is_set(26)) {
+//		SEGGER_RTT_printf(0,"Entered While loop");
 		if (spibuffer_sz > 0) {
 			m_tx_buf[0] = transmit_to_chip[spibuffer_r_ptr];
 			spibuffer_r_ptr++;
@@ -333,50 +335,50 @@ int main(void)
 	clocks_start();
 	esb_init();
 
-	nrf_gpio_pin_dir_set(CHIP_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
-	init_flash(0); //Call the function to initialize flash variables (start address location etc) without erasing any flash.
-	nrf_gpio_pin_dir_set(FPGA_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
-	nrf_gpio_pin_set(FPGA_RESET_PIN);
-	if (*start_addr != 0xFFFFFFFF) { //The flash isn't erased; there's a valid FPGA image in flash
-		config_FPGA(1);
-	}
-	else {
-		config_FPGA(0);
-	}
-	nrf_gpio_pin_clear(FPGA_RESET_PIN);
-	nrf_gpio_pin_clear(CHIP_RESET_PIN);
-	nrf_delay_ms(3);
-	nrf_gpio_pin_set(FPGA_RESET_PIN);
-	nrf_gpio_pin_set(CHIP_RESET_PIN);
-
-	//Initialize SPI
-    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
-    	spi_config.ss_pin               = SPI_CS_PIN;
-    	spi_config.mode					= NRF_DRV_SPI_MODE_0;
-    nrf_drv_spi_init(&spi, &spi_config, NULL);
-
-	for (i=0;i<1024;i++) { //initialize SPI FIFO buffer
-		transmit_to_chip[i] = 0;
-	}
+//	nrf_gpio_pin_dir_set(CHIP_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
+//	init_flash(0); //Call the function to initialize flash variables (start address location etc) without erasing any flash.
+//	nrf_gpio_pin_dir_set(FPGA_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
+//	nrf_gpio_pin_set(FPGA_RESET_PIN);
+//	if (*start_addr != 0xFFFFFFFF) { //The flash isn't erased; there's a valid FPGA image in flash
+//		config_FPGA(1);
+//	}
+//	else {
+//		config_FPGA(0);
+//	}
+//	nrf_gpio_pin_clear(FPGA_RESET_PIN);
+//	nrf_gpio_pin_clear(CHIP_RESET_PIN);
+//	nrf_delay_ms(3);
+//	nrf_gpio_pin_set(FPGA_RESET_PIN);
+//	nrf_gpio_pin_set(CHIP_RESET_PIN);
+//
+//	//Initialize SPI
+//    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
+//    	spi_config.ss_pin               = SPI_CS_PIN;
+//    	spi_config.mode					= NRF_DRV_SPI_MODE_0;
+//    nrf_drv_spi_init(&spi, &spi_config, NULL);
+//
+//	for (i=0;i<1024;i++) { //initialize SPI FIFO buffer
+//		transmit_to_chip[i] = 0;
+//	}
 
 	if(!nrf_drv_gpiote_is_init())	{
 			nrf_drv_gpiote_init();
 	}
 
-
-	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true); //configure input pin using high frequency clocks for maximum responsiveness
-	config.pull = NRF_GPIO_PIN_PULLDOWN;
-	nrf_drv_gpiote_in_init(26, &config, in_pin_handler); //set watch on pin 26 calling in_pin_handler on pin state change from low to high
-	nrf_drv_gpiote_in_event_enable(26, true);
+//
+//	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true); //configure input pin using high frequency clocks for maximum responsiveness
+//	config.pull = NRF_GPIO_PIN_PULLDOWN;
+//	nrf_drv_gpiote_in_init(26, &config, in_pin_handler); //set watch on pin 26 calling in_pin_handler on pin state change from low to high
+//	nrf_drv_gpiote_in_event_enable(26, true);
 
 	//Start ESB reception
 	tx_payload.length = 1;
 	tx_payload.data[0] = packetid;
-	nrf_esb_start_rx();
+	APP_ERROR_CHECK(nrf_esb_start_rx());
 
 	while(true) {
 		if (readpackets_flag == 1) {
-			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) {
+			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) { //manual setting of payload prevented by this validation
 				tx_fifo_size--;
 				if (tx_fifo_size <= 0) {
 					rxfifo_empty_payload.data[0] = packetid;
@@ -462,7 +464,7 @@ int main(void)
 					else {
 						if (rx_payload.data[0] == 0x12 && rx_payload.data[1] == 0x35 && rx_payload.data[2] == 0x37) {
 							//Reset command: received when TX is booted, or when manual reset of RX is needed.
-							//Reset actions: reset FPGA, reset chip, flush RX and TX FIFO, reinitialize SPI, set FIFO counter to 0
+							//Reset actions: reset FPGA, reset chip, flush RX and TX FIFO, reinitialise SPI, set FIFO counter to 0
 							//Note: can be done with full reset of MCU
 							nrf_gpio_pin_clear(CHIP_RESET_PIN);
 							nrf_delay_ms(200);
@@ -539,9 +541,8 @@ int main(void)
 			//No more packets in FIFO to be read
 			readpackets_flag = 0;
 		}
-		if (spitransaction_flag == 1) {
-			spi_transaction();
-		}
+//		if (spitransaction_flag == 1) {
+//			spi_transaction();
+//		}
     }
 }
-
