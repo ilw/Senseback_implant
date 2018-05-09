@@ -73,7 +73,7 @@ static nrf_esb_payload_t rx_payload;
 static nrf_esb_payload_t tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00);
 static nrf_esb_payload_t rxfifo_empty_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xF1, 0xF0);
 static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x9A, 0x00);
-
+static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
 //Other variables
 static uint32_t errcode;
 
@@ -457,9 +457,6 @@ int main(void)
 							}
 							tx_payload.length = 1;
 						}
-
-
-
 					}
 					else {
 						if (rx_payload.data[0] == 0x12 && rx_payload.data[1] == 0x35 && rx_payload.data[2] == 0x37) {
@@ -470,6 +467,13 @@ int main(void)
 							nrf_delay_ms(200);
 							NVIC_SystemReset();
 						}
+            if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
+              bootloader_ack_payload.data[0] = packetid;
+              errcode = nrf_esb_write_payload(&bootloader_ack_payload);
+              packetid++;
+              tx_fifo_size++;
+            }
+
 						if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB)) { //Command: begin fpga image upload
 							fpga_checksum = 0;
 							fpgaimage_intcount = 0;
@@ -484,6 +488,7 @@ int main(void)
 							validation_payload.data[3] = 0x00;
 							debug_flag++;
 						}
+
 						else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xCC)) { //Command: validate fpga image
 							fpga_accept_flag = 1;
 							tmp = *((uint32_t*)(rx_payload.data+3));
