@@ -39,8 +39,22 @@
 #include "flashwriting.h"
 #include "SEGGER_RTT.h"
 
+//includes for wireless bootloader code
+#include "dfu_transport.h"
+#include "bootloader.h"
+#include "bootloader_util.h"
+#include "nordic_common.h"
+#include "nrf_soc.h"
+#include "nrf_gpio.h"
+#include "app_scheduler.h"
+#include "app_timer_appsh.h"
+#include "bsp.h"
+#include "softdevice_handler_appsh.h"
+#include "pstorage_platform.h"
+#include "nrf_mbr.h"
+#include "nrf_log.h"
 
-
+//include FPGA image
 INCBIN(FPGAimg, "FPGAimage.bin");
 
 //Make Microcontroller NFC pins usable as GPIOs

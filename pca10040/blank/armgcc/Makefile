@@ -3,7 +3,7 @@ PROJECT_NAME := blinky_blank_pca10040
 export OUTPUT_FILENAME
 #MAKEFILE_NAME := $(CURDIR)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 MAKEFILE_NAME := $(MAKEFILE_LIST)
-MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) ) 
+MAKEFILE_DIR := $(dir $(MAKEFILE_NAME) )
 #
 TEMPLATE_PATH = ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc
 ifeq ($(OS),Windows_NT)
@@ -17,7 +17,7 @@ RM := rm -rf
 
 #echo suspend
 ifeq ("$(VERBOSE)","1")
-NO_ECHO := 
+NO_ECHO :=
 else
 NO_ECHO := @
 endif
@@ -47,11 +47,26 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/gpiote/nrf_
 $(abspath ../../../../nRF5_SDK_canopy_project/components/properitary_rf/esb/nrf_esb.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error_weak.c) \
-$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_util_platform.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/nrf_assert.c) \
 $(abspath ../../../external/RTT/SEGGER_RTT.c) \
 $(abspath ../../../external/RTT/SEGGER_RTT_printf.c) \
 $(abspath ../../../external/Syscalls/RTT_Syscalls_GCC.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_timer_appsh.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/bootloader.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/bootloader_settings.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/bootloader_util.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/crc16/crc16.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/dfu_dual_bank.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/dfu_init_template.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/hci/hci_mem_pool.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/pstorage/pstorage_raw.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softdevice_handler/softdevice_handler.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/scheduler/app_scheduler.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_util_platform.c) \
+
+# $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_timer.c) \
+
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  += \
@@ -60,7 +75,6 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc/gcc_start
 #includes common to all targets
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain)
-INC_PATHS += -I$(abspath ../../..)
 INC_PATHS += -I$(abspath ../../../resources)
 INC_PATHS += -I$(abspath ../../../src)
 INC_PATHS += -I$(abspath ../../../external/incbin-master)
@@ -73,16 +87,24 @@ INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/config)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/delay)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/hal)
-INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/nrf_soc_nosd)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/spi_master)
-INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/timer)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/gpiote)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/uart)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/properitary_rf/esb)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/CMSIS/Include)
-
-
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/scheduler)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/crc16)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/s132/headers)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/s132/headers/nrf52)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/CMSIS/Include)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softdevice_handler)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/pstorage/config)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/pstorage)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/hci/config)
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/hci)
 
 OBJECT_DIRECTORY = _build
 LISTING_DIRECTORY = $(OBJECT_DIRECTORY)
@@ -109,14 +131,18 @@ CFLAGS += -DNRF52_PAN_62
 CFLAGS += -DNRF52_PAN_63
 CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DNRF52
+CFLAGS += -DS132
+CFLAGS += -D__HEAP_SIZE=0
+CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DBSP_DEFINES_ONLY
+CFLAGS += -DSWI_DISABLE0
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs --std=gnu99
-CFLAGS += -Wall -Werror -O0 -g3
+CFLAGS += -Wall -Werror -O0 -g3 -fomit-frame-pointer
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in separate section. This will allow linker to dump unused functions
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
-CFLAGS += -fno-builtin --short-enums 
+CFLAGS += -fno-builtin --short-enums
 # keep every function in separate section. This will allow linker to dump unused functions
 LDFLAGS += -Xlinker -Map=$(LISTING_DIRECTORY)/$(OUTPUT_FILENAME).map
 LDFLAGS += -mthumb -mabi=aapcs -L $(TEMPLATE_PATH) -T$(LINKER_SCRIPT)
@@ -217,7 +243,7 @@ genbin:
 	$(NO_ECHO)$(OBJCOPY) -O binary $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).bin
 
 ## Create binary .hex file from the .out file
-genhex: 
+genhex:
 	@echo Preparing: $(OUTPUT_FILENAME).hex
 	$(NO_ECHO)$(OBJCOPY) -O ihex $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).out $(OUTPUT_BINARY_DIRECTORY)/$(OUTPUT_FILENAME).hex
 echosize:
