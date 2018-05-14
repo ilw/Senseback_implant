@@ -89,7 +89,7 @@ static nrf_esb_payload_t tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00);
 static nrf_esb_payload_t rxfifo_empty_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xF1, 0xF0);
 static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x9A, 0x00);
 static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
-static nrf_esb_payload_t debug_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDE, 0xBB);
+static nrf_esb_payload_t debug_payload =          NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDB, 0xBB);
 //Other variables
 static uint32_t errcode;
 
@@ -130,7 +130,7 @@ void esb_init( void )
 
 		//Configuration params
     nrf_esb_config_t nrf_esb_config         = NRF_ESB_DEFAULT_CONFIG;
-	nrf_esb_config.protocol                 = NRF_ESB_PROTOCOL_ESB_DPL;
+	  nrf_esb_config.protocol                 = NRF_ESB_PROTOCOL_ESB_DPL;
     nrf_esb_config.payload_length           = RX_PAYLOAD_LENGTH;
     nrf_esb_config.bitrate                  = NRF_ESB_BITRATE_2MBPS;
     nrf_esb_config.mode                     = NRF_ESB_MODE_PRX;			//rx mode
@@ -337,7 +337,22 @@ void spi_transaction() {
 	}
 	spitransaction_flag = 0;
 }
+void debug_error(uint8_t error) {
+  bootloader_ack_payload.data[0] = packetid;
+  debug_payload.data[0] = packetid;
+  if(error != NRF_SUCCESS) {
+    debug_payload.data[2] = error;
+    errcode = nrf_esb_write_payload(&debug_payload);
+    packetid++;
+    tx_fifo_size++;
+  }
+  else {
+    errcode = nrf_esb_write_payload(&bootloader_ack_payload);
+    packetid++;
+    tx_fifo_size++;
+  }
 
+}
 int main(void)
 {
 		int i=0;
@@ -482,36 +497,33 @@ int main(void)
 
 						}
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
-              bootloader_ack_payload.data[0] = packetid;
-              //start up bootloader TODO
+
+              (void)bootloader_init(); //no BLE code
+
               uint32_t                  p_retval;
-              pstorage_handle_t         p_handle;
+
+              pstorage_handle_t         p_handle_base;
+              pstorage_handle_t         p_handle_new_app;
+
               pstorage_module_param_t   p_params;
 
               //storage initialisation
               p_retval = pstorage_init();
-
+              debug_error(p_retval);
               //registration
               //set storage space to the size of the application.
               //TODO CHECK THAT THERE IS SPACE FOR BOTH APPS MAKE A RETURN FOR APPLICATION SIZE TOO LARGE.
-              p_params.block_size = DFU_BANK_1_REGION_START - DFU_BANK_0_REGION_START;
+              p_params.block_size = 0x800; //max block size
               p_params.block_count = 2;
 
-              p_retval = pstorage_register(&p_params, &p_handle);
-              //
+              p_retval = pstorage_register(&p_params, &p_handle_base);
+              debug_error(p_retval);
+              //get the block variales for the new block (nit used in raw [storage])
+              p_retval = pstorage_block_identifier_get(&p_handle_base, 1, &p_handle_new_app);
+              debug_error(p_retval);
 
+              // p_retval = pstorage_store();
 
-              //debug returns for incremental building 
-              if(p_retval == NRF_SUCCESS) {
-                errcode = nrf_esb_write_payload(&bootloader_ack_payload);
-                packetid++;
-                tx_fifo_size++;
-              }
-              else {
-                errcode = nrf_esb_write_payload(&debug_payload);
-                packetid++;
-                tx_fifo_size++;
-              }
 
 
               // bool     dfu_start = false;
@@ -533,7 +545,6 @@ int main(void)
               // timers_init(); //no BLE code
               // buttons_init(); using other comms
 
-              (void)bootloader_init(); //no BLE code
 
               // if (bootloader_dfu_sd_in_progress())
               // {

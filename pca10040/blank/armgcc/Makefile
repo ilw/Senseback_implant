@@ -59,7 +59,7 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/crc16/crc16.c
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/dfu_dual_bank.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/bootloader_dfu/dfu_init_template.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/hci/hci_mem_pool.c) \
-$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/pstorage/pstorage_raw.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/pstorage/pstorage.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softdevice_handler/softdevice_handler.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/scheduler/app_scheduler.c) \
