@@ -65,7 +65,6 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/softdevice/common/softd
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/scheduler/app_scheduler.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_util_platform.c) \
 
-# $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_timer.c) \
 
 
 #assembly files common to all targets

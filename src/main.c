@@ -53,6 +53,7 @@
 #include "pstorage_platform.h"
 #include "nrf_mbr.h"
 #include "nrf_log.h"
+#include "pstorage.h"
 
 //include FPGA image
 INCBIN(FPGAimg, "FPGAimage.bin");
@@ -88,6 +89,7 @@ static nrf_esb_payload_t tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00);
 static nrf_esb_payload_t rxfifo_empty_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xF1, 0xF0);
 static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x9A, 0x00);
 static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
+static nrf_esb_payload_t debug_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDE, 0xBB);
 //Other variables
 static uint32_t errcode;
 
@@ -197,12 +199,12 @@ void Send_Clocks(int num_clocks)
 }
 
 
-
-void config_FPGA(int newimage_flag)
+// void config_FPGA(int newimage_flag)
+void config_FPGA(void)
 {
 	int i=0;
-	uint32_t fpgaimage_size;
-	uint8_t* addr = (uint8_t*)start_addr;
+	// uint32_t fpgaimage_size;
+	// uint8_t* addr = (uint8_t*)start_addr;
 	//uint8_t* fpgaimage_addr;
 
 	//Set spi and creset pins as outputs
@@ -211,8 +213,6 @@ void config_FPGA(int newimage_flag)
 	nrf_gpio_pin_dir_set(SPI_CS_PIN2,NRF_GPIO_PIN_DIR_OUTPUT);
 	nrf_gpio_pin_dir_set(CS_RESET_B,NRF_GPIO_PIN_DIR_OUTPUT);
 	nrf_gpio_pin_dir_set(CDONE,NRF_GPIO_PIN_DIR_INPUT);
-
-
 
 	// Clear SSEL and CS_Reset
 	nrf_gpio_pin_clear(SPI_CS_PIN2);
@@ -236,25 +236,25 @@ void config_FPGA(int newimage_flag)
 
 	//send 8 clocks
 	Send_Clocks(8);
-
-	if (newimage_flag == 1) { //we have a new FPGA image
-		fpgaimage_size = *(start_addr+1);
-		for (i=0;i<fpgaimage_size;i++)
-		{
-
-			bitbang_spi(*(addr+8+i));
-		}
-
-		//fpgaimage_addr = (uint8_t*)(start_addr+2);
-	}
-	else {
+  //INSTEAD OF SENDING THE FPGA IMAGE ACROSS IT WILL BE SAVED WITH THE IMPLANT APPLICATION. NO NEW IMAGE FLAG NEEDED
+	// if (newimage_flag == 1) { //we have a new FPGA image
+	// 	fpgaimage_size = *(start_addr+1);
+	// 	for (i=0;i<fpgaimage_size;i++)
+	// 	{
+  //
+	// 		bitbang_spi(*(addr+8+i));
+	// 	}
+  //
+	// 	//fpgaimage_addr = (uint8_t*)(start_addr+2);
+	// }
+	// else {
 		//fpgaimage_size = gFPGAimgSize;
 		//fpgaimage_addr = gFPGAimgData;
 		for (i=0;i<gFPGAimgSize;i++)
 		{
 			bitbang_spi(*(gFPGAimgData+i));
 		}
-	}
+	// }
 	//Program FPGA (call spi_bitbang) here
 	//Send file 1 byte at a time
 
@@ -284,7 +284,7 @@ void config_FPGA(int newimage_flag)
 void spi_transaction() {
 	int i;
 	while (spibuffer_sz > 0 || nrf_drv_gpiote_in_is_set(26)) {
-//		SEGGER_RTT_printf(0,"Entered While loop");
+    //		SEGGER_RTT_printf(0,"Entered While loop");
 		if (spibuffer_sz > 0) {
 			m_tx_buf[0] = transmit_to_chip[spibuffer_r_ptr];
 			spibuffer_r_ptr++;
@@ -425,7 +425,6 @@ int main(void)
 					}
 					//Load SPI buffers and fire
 					spi_transaction();
-
 				}
 				else { //If payload contains odd number of bytes then it is a command packet
 					if (rx_payload.data[0] == 0x61) {
@@ -480,12 +479,109 @@ int main(void)
 							nrf_gpio_pin_clear(CHIP_RESET_PIN);
 							nrf_delay_ms(200);
 							NVIC_SystemReset();
+
 						}
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
               bootloader_ack_payload.data[0] = packetid;
-              errcode = nrf_esb_write_payload(&bootloader_ack_payload);
-              packetid++;
-              tx_fifo_size++;
+              //start up bootloader TODO
+              uint32_t                  p_retval;
+              pstorage_handle_t         p_handle;
+              pstorage_module_param_t   p_params;
+
+              //storage initialisation
+              p_retval = pstorage_init();
+
+              //registration
+              //set storage space to the size of the application.
+              //TODO CHECK THAT THERE IS SPACE FOR BOTH APPS MAKE A RETURN FOR APPLICATION SIZE TOO LARGE.
+              p_params.block_size = DFU_BANK_1_REGION_START - DFU_BANK_0_REGION_START;
+              p_params.block_count = 2;
+
+              p_retval = pstorage_register(&p_params, &p_handle);
+              //
+
+
+              //debug returns for incremental building 
+              if(p_retval == NRF_SUCCESS) {
+                errcode = nrf_esb_write_payload(&bootloader_ack_payload);
+                packetid++;
+                tx_fifo_size++;
+              }
+              else {
+                errcode = nrf_esb_write_payload(&debug_payload);
+                packetid++;
+                tx_fifo_size++;
+              }
+
+
+              // bool     dfu_start = false;
+              // bool     app_reset = (NRF_POWER->GPREGRET == BOOTLOADER_DFU_START);
+              //
+              // if (app_reset)
+              // {
+              //     NRF_POWER->GPREGRET = 0;
+              // }
+
+              // leds_init(); //using uart instead of led comms
+
+              // This check ensures that the defined fields in the bootloader corresponds with actual
+              // setting in the chip.
+              // APP_ERROR_CHECK_BOOL(*((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) == BOOTLOADER_REGION_START);
+              // APP_ERROR_CHECK_BOOL(NRF_FICR->CODEPAGESIZE == CODE_PAGE_SIZE);
+
+              // Initialize.
+              // timers_init(); //no BLE code
+              // buttons_init(); using other comms
+
+              (void)bootloader_init(); //no BLE code
+
+              // if (bootloader_dfu_sd_in_progress())
+              // {
+              //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
+              //
+              //     err_code = bootloader_dfu_sd_update_continue();
+              //     APP_ERROR_CHECK(err_code);
+              //
+              //     ble_stack_init(!app_reset);
+              //     scheduler_init();
+              //
+              //     err_code = bootloader_dfu_sd_update_finalize();
+              //     APP_ERROR_CHECK(err_code);
+              //
+              //     nrf_gpio_pin_set(UPDATE_IN_PROGRESS_LED);
+              // }
+              // else
+              // {
+              //     // If stack is present then continue initialization of bootloader.
+              //     ble_stack_init(!app_reset);
+              //     scheduler_init();
+              // }
+              //
+              // dfu_start  = app_reset;
+              // dfu_start |= ((nrf_gpio_pin_read(BOOTLOADER_BUTTON) == 0) ? true: false);
+              //
+              //
+              //
+              // if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START)))
+              // {
+              //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
+              //
+              //     // Initiate an update of the firmware.
+              //     err_code = bootloader_dfu_start();
+              //     APP_ERROR_CHECK(err_code);
+              //
+              //     nrf_gpio_pin_set(UPDATE_IN_PROGRESS_LED);
+              // }
+              //
+              // if (bootloader_app_is_valid(DFU_BANK_0_REGION_START) && !bootloader_dfu_sd_in_progress())
+              // {
+              //     // Select a bank region to use as application region.
+              //     // @note: Only applications running from DFU_BANK_0_REGION_START is supported.
+              //     bootloader_app_start(DFU_BANK_0_REGION_START);
+              // }
+              //
+              // NVIC_SystemReset();
+              break; //TODO remove this when the booloader sequence works
             }
 
 						if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB)) { //Command: begin fpga image upload
