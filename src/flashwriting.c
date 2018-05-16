@@ -1,5 +1,5 @@
 
-	
+
 #include "bsp.h"
 
 /******************************************************
@@ -7,7 +7,7 @@
 *******************************************************/
 uint32_t * start_addr;
 
-/** 
+/**
  * Function for erasing a page in flash.
  * @param page_address Address of the first word in the page to be erased.
  */
@@ -39,7 +39,7 @@ void flash_page_erase(uint32_t * page_address)
 }
 
 
-/** 
+/**
  * Function for filling a page in flash with a value.
  * @param[in] address Address of the first word in the page to be filled.
  * @param[in] value Value to be written to flash.
@@ -99,7 +99,7 @@ void init_flash(int erase)
 
 
 
-/*********************************************** 
+/***********************************************
 * Function to write an array - slightly dodgy casting?
 ************************************************/
 bool flash_array_write(uint32_t * address, uint8_t dataIn[], uint32_t dataLength, uint32_t * checksum)
@@ -109,19 +109,30 @@ bool flash_array_write(uint32_t * address, uint8_t dataIn[], uint32_t dataLength
 
 	if ((dataLength*4)%4 !=0) return false; //Had to make temporary change while I figure out how to pass actual number of bytes instead of number of ints
 	data = (uint32_t *) dataIn;  //Is this ok?
-	
+
 	for (j=0;j<dataLength;j++)
 	{
 		flash_word_write(address+j, *(data+j)); //data is 4 bytes
 		*checksum += *(data+j);
 	}
 	return true;
-}	
-	
-	
-	
-	
+}
 
 
+uint32_t flash_word_read(uint32_t * address)
+{
+	//ensure read only is Enabled
+	NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos);
 
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+	{
+			// Do nothing.
+	}
 
+	return *address;
+
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
+	{
+			// Do nothing.
+	}
+}

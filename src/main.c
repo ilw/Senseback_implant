@@ -88,10 +88,12 @@ static nrf_esb_payload_t rx_payload;
 static nrf_esb_payload_t tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00);
 static nrf_esb_payload_t rxfifo_empty_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xF1, 0xF0);
 static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x9A, 0x00);
-static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
-static nrf_esb_payload_t debug_payload =          NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDB, 0xBB);
+// static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
+static nrf_esb_payload_t debug_payload =          NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDB, 0xBB, 0x00, 0x00, 0x00);
 //Other variables
 static uint32_t errcode;
+//declare callback handler from bootloader source file
+
 
 //Start system high freq clock
 void clocks_start( void )
@@ -156,7 +158,6 @@ void in_pin_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
 	}
 
 }
-
 //{ FPGA PROGRAMMING FUNCTIONS
 
 void bitbang_spi(uint8_t data)
@@ -337,21 +338,15 @@ void spi_transaction() {
 	}
 	spitransaction_flag = 0;
 }
-void debug_error(uint8_t error) {
-  bootloader_ack_payload.data[0] = packetid;
+void debug_pack(uint32_t data) {
   debug_payload.data[0] = packetid;
-  if(error != NRF_SUCCESS) {
-    debug_payload.data[2] = error;
-    errcode = nrf_esb_write_payload(&debug_payload);
-    packetid++;
-    tx_fifo_size++;
-  }
-  else {
-    errcode = nrf_esb_write_payload(&bootloader_ack_payload);
-    packetid++;
-    tx_fifo_size++;
-  }
-
+  debug_payload.data[5] = (uint8_t) (0xFF & ( data));
+  debug_payload.data[4] = (uint8_t) (0xFF & ( data >> 8));
+  debug_payload.data[3] = (uint8_t) (0xFF & ( data >> 16));
+  debug_payload.data[2] = (uint8_t) (0xFF & ( data >> 24));
+  nrf_esb_write_payload(&debug_payload);
+  packetid++;
+  tx_fifo_size++;
 }
 int main(void)
 {
@@ -498,33 +493,67 @@ int main(void)
 						}
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
 
-              (void)bootloader_init(); //no BLE code
+              // errcode = bootloader_init(void); //no BLE code TODO returning invalid perameters
+              // debug_error(errcode);
 
-              uint32_t                  p_retval;
+              // uint32_t                  p_retval;
 
-              pstorage_handle_t         p_handle_base;
-              pstorage_handle_t         p_handle_new_app;
+              // pstorage_handle_t         p_handle_base;
+              // pstorage_handle_t         p_handle_new_app;
+              //
+              // pstorage_module_param_t   p_params;
 
-              pstorage_module_param_t   p_params;
+              // uint32_t  test_store_data = 0xACABADAE;
 
+
+              uint32_t * DFU_BANK_1_START;
+              DFU_BANK_1_START = (uint32_t *) (DFU_BANK_0_REGION_START & 0xFFFFFFFF);
+
+              // flash_word_write(DFU_BANK_1_START, test_store_data);
+              //
+              uint32_t test_load_data = flash_word_read(DFU_BANK_1_START);
               //storage initialisation
-              p_retval = pstorage_init();
-              debug_error(p_retval);
-              //registration
-              //set storage space to the size of the application.
-              //TODO CHECK THAT THERE IS SPACE FOR BOTH APPS MAKE A RETURN FOR APPLICATION SIZE TOO LARGE.
-              p_params.block_size = 0x800; //max block size
-              p_params.block_count = 2;
+              // p_retval = pstorage_init();
+              // debug_error(p_retval);
+              // //registration
+              // //set storage space to the size of the application.
+              // //TODO CHECK THAT THERE IS SPACE FOR BOTH APPS MAKE A RETURN FOR APPLICATION SIZE TOO LARGE.
+              // // p_params.cb = pstorage_sys_event_handler;
+              // p_params.block_size = 0x40; //max block size
+              // p_params.block_count = 3;
+              //
+              // p_retval = pstorage_register(&p_params, &p_handle_base);
+              // // debug_error(p_retval);
+              // //get the block variales for the new block (nit used in raw [storage])
+              // p_retval = pstorage_block_identifier_get(&p_handle_base, 2, &p_handle_new_app);
+              // // debug_error(p_retval);
+              // //clear the memory to controlled by pstorage returning 0x07 - invalid perams
+              // // p_retval = pstorage_clear(&p_handle_new_app, 0x10);
+              // // debug_error(p_retval);
+              // //store the test data
+              // p_retval = pstorage_store(&p_handle_new_app, &test_store_data, 2, 32);
+              // // debug_error(p_retval);
+              // //read the test data from the block
+              // p_retval = pstorage_load(&test_load_data, &p_handle_new_app, 2, 32);
+              // // debug_error(p_retval);
+              // // output block id for debugs
 
-              p_retval = pstorage_register(&p_params, &p_handle_base);
-              debug_error(p_retval);
-              //get the block variales for the new block (nit used in raw [storage])
-              p_retval = pstorage_block_identifier_get(&p_handle_base, 1, &p_handle_new_app);
-              debug_error(p_retval);
-
-              // p_retval = pstorage_store();
-
-
+              // for(i=0; i<4; i++){
+              //   debug_payload.data[0] = packetid;
+              //   debug_payload.data[2] = (uint8_t) (0xFF & ((int) DFU_BANK_1_START >> (8*i)));
+              //   nrf_esb_write_payload(&debug_payload);
+              //   packetid++;
+              //   tx_fifo_size++;
+              // }
+              debug_pack((uint32_t) DFU_BANK_1_START);
+              debug_pack((DFU_BANK_1_REGION_START & 0xFFFFFFFF));
+              debug_pack(test_load_data);
+              // if(test_load_data == test_store_data){
+              //   bootloader_ack_payload.data[0] = packetid;
+              //   errcode = nrf_esb_write_payload(&bootloader_ack_payload);
+              //   packetid++;
+              //   tx_fifo_size++;
+              // }
 
               // bool     dfu_start = false;
               // bool     app_reset = (NRF_POWER->GPREGRET == BOOTLOADER_DFU_START);
@@ -533,19 +562,14 @@ int main(void)
               // {
               //     NRF_POWER->GPREGRET = 0;
               // }
-
               // leds_init(); //using uart instead of led comms
-
               // This check ensures that the defined fields in the bootloader corresponds with actual
               // setting in the chip.
               // APP_ERROR_CHECK_BOOL(*((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) == BOOTLOADER_REGION_START);
               // APP_ERROR_CHECK_BOOL(NRF_FICR->CODEPAGESIZE == CODE_PAGE_SIZE);
-
               // Initialize.
               // timers_init(); //no BLE code
               // buttons_init(); using other comms
-
-
               // if (bootloader_dfu_sd_in_progress())
               // {
               //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
@@ -567,12 +591,8 @@ int main(void)
               //     ble_stack_init(!app_reset);
               //     scheduler_init();
               // }
-              //
               // dfu_start  = app_reset;
               // dfu_start |= ((nrf_gpio_pin_read(BOOTLOADER_BUTTON) == 0) ? true: false);
-              //
-              //
-              //
               // if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START)))
               // {
               //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
@@ -583,7 +603,6 @@ int main(void)
               //
               //     nrf_gpio_pin_set(UPDATE_IN_PROGRESS_LED);
               // }
-              //
               // if (bootloader_app_is_valid(DFU_BANK_0_REGION_START) && !bootloader_dfu_sd_in_progress())
               // {
               //     // Select a bank region to use as application region.
@@ -592,7 +611,8 @@ int main(void)
               // }
               //
               // NVIC_SystemReset();
-              break; //TODO remove this when the booloader sequence works
+
+              break; //TODO remove this when the booloader sequence works as it should reset here
             }
 
 						if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB)) { //Command: begin fpga image upload
