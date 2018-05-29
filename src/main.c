@@ -18,7 +18,6 @@
 
 #define CHIP_RESET_PIN 23
 
-
 //Include SDK files
 #include <stdbool.h>
 #include <stdint.h>
@@ -348,6 +347,7 @@ void debug_pack(uint32_t data) {
   packetid++;
   tx_fifo_size++;
 }
+
 int main(void)
 {
 		int i=0;
@@ -492,125 +492,36 @@ int main(void)
 
 						}
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
-
               // errcode = bootloader_init(void); //no BLE code TODO returning invalid perameters
               // debug_error(errcode);
+              // uint32_t softdevice_start;
+              // debug_pack(DFU_BANK_0_REGION_START); //0x2311D001
+              // debug_pack(DFU_BANK_1_REGION_START); //0X918CB001
+              // debug_pack(DFU_REGION_TOTAL_SIZE);   //0XDCF5CFFF
+              // debug_pack(SOFTDEVICE_REGION_START); //0X00001000
+              // debug_pack(DFU_APP_DATA_RESERVED);   //0X00000000
+              // softdevice_start = flash_word_read((uint32_t *) 0x00003000);
+              debug_pack(0xF000000D);
 
-              // uint32_t                  p_retval;
 
-              // pstorage_handle_t         p_handle_base;
-              // pstorage_handle_t         p_handle_new_app;
-              //
-              // pstorage_module_param_t   p_params;
 
               // uint32_t  test_store_data = 0xACABADAE;
 
-
-              uint32_t * DFU_BANK_1_START;
-              DFU_BANK_1_START = (uint32_t *) (DFU_BANK_0_REGION_START & 0xFFFFFFFF);
+              // init_flash(0);
+              // debug_pack((uint32_t) &start_addr); //0X20000E04
+              // uint32_t * dfu_bank_0;
+              // dfu_bank_0 = (uint32_t *) DFU_BANK_1_REGION_START);
+              // dfu_bank_0 = (uint32_t *) DFU_BANK_0_REGION_START);
+              // debug_pack((uint32_t) dfu_bank_0);
 
               // flash_word_write(DFU_BANK_1_START, test_store_data);
               //
-              uint32_t test_load_data = flash_word_read(DFU_BANK_1_START);
-              //storage initialisation
-              // p_retval = pstorage_init();
-              // debug_error(p_retval);
-              // //registration
-              // //set storage space to the size of the application.
-              // //TODO CHECK THAT THERE IS SPACE FOR BOTH APPS MAKE A RETURN FOR APPLICATION SIZE TOO LARGE.
-              // // p_params.cb = pstorage_sys_event_handler;
-              // p_params.block_size = 0x40; //max block size
-              // p_params.block_count = 3;
-              //
-              // p_retval = pstorage_register(&p_params, &p_handle_base);
-              // // debug_error(p_retval);
-              // //get the block variales for the new block (nit used in raw [storage])
-              // p_retval = pstorage_block_identifier_get(&p_handle_base, 2, &p_handle_new_app);
-              // // debug_error(p_retval);
-              // //clear the memory to controlled by pstorage returning 0x07 - invalid perams
-              // // p_retval = pstorage_clear(&p_handle_new_app, 0x10);
-              // // debug_error(p_retval);
-              // //store the test data
-              // p_retval = pstorage_store(&p_handle_new_app, &test_store_data, 2, 32);
-              // // debug_error(p_retval);
-              // //read the test data from the block
-              // p_retval = pstorage_load(&test_load_data, &p_handle_new_app, 2, 32);
-              // // debug_error(p_retval);
-              // // output block id for debugs
+              // uint32_t test_load_data = flash_word_read(dfu_bank_0);
 
-              // for(i=0; i<4; i++){
-              //   debug_payload.data[0] = packetid;
-              //   debug_payload.data[2] = (uint8_t) (0xFF & ((int) DFU_BANK_1_START >> (8*i)));
-              //   nrf_esb_write_payload(&debug_payload);
-              //   packetid++;
-              //   tx_fifo_size++;
-              // }
-              debug_pack((uint32_t) DFU_BANK_1_START);
-              debug_pack((DFU_BANK_1_REGION_START & 0xFFFFFFFF));
-              debug_pack(test_load_data);
-              // if(test_load_data == test_store_data){
-              //   bootloader_ack_payload.data[0] = packetid;
-              //   errcode = nrf_esb_write_payload(&bootloader_ack_payload);
-              //   packetid++;
-              //   tx_fifo_size++;
-              // }
 
-              // bool     dfu_start = false;
-              // bool     app_reset = (NRF_POWER->GPREGRET == BOOTLOADER_DFU_START);
-              //
-              // if (app_reset)
-              // {
-              //     NRF_POWER->GPREGRET = 0;
-              // }
-              // leds_init(); //using uart instead of led comms
-              // This check ensures that the defined fields in the bootloader corresponds with actual
-              // setting in the chip.
-              // APP_ERROR_CHECK_BOOL(*((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) == BOOTLOADER_REGION_START);
-              // APP_ERROR_CHECK_BOOL(NRF_FICR->CODEPAGESIZE == CODE_PAGE_SIZE);
-              // Initialize.
-              // timers_init(); //no BLE code
-              // buttons_init(); using other comms
-              // if (bootloader_dfu_sd_in_progress())
-              // {
-              //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
-              //
-              //     err_code = bootloader_dfu_sd_update_continue();
-              //     APP_ERROR_CHECK(err_code);
-              //
-              //     ble_stack_init(!app_reset);
-              //     scheduler_init();
-              //
-              //     err_code = bootloader_dfu_sd_update_finalize();
-              //     APP_ERROR_CHECK(err_code);
-              //
-              //     nrf_gpio_pin_set(UPDATE_IN_PROGRESS_LED);
-              // }
-              // else
-              // {
-              //     // If stack is present then continue initialization of bootloader.
-              //     ble_stack_init(!app_reset);
-              //     scheduler_init();
-              // }
-              // dfu_start  = app_reset;
-              // dfu_start |= ((nrf_gpio_pin_read(BOOTLOADER_BUTTON) == 0) ? true: false);
-              // if (dfu_start || (!bootloader_app_is_valid(DFU_BANK_0_REGION_START)))
-              // {
-              //     nrf_gpio_pin_clear(UPDATE_IN_PROGRESS_LED);
-              //
-              //     // Initiate an update of the firmware.
-              //     err_code = bootloader_dfu_start();
-              //     APP_ERROR_CHECK(err_code);
-              //
-              //     nrf_gpio_pin_set(UPDATE_IN_PROGRESS_LED);
-              // }
-              // if (bootloader_app_is_valid(DFU_BANK_0_REGION_START) && !bootloader_dfu_sd_in_progress())
-              // {
-              //     // Select a bank region to use as application region.
-              //     // @note: Only applications running from DFU_BANK_0_REGION_START is supported.
-              //     bootloader_app_start(DFU_BANK_0_REGION_START);
-              // }
-              //
-              // NVIC_SystemReset();
+
+
+
 
               break; //TODO remove this when the booloader sequence works as it should reset here
             }
