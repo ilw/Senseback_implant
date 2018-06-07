@@ -130,9 +130,4 @@ uint32_t flash_word_read(uint32_t * address)
 	}
 
 	return *address;
-
-	while (NRF_NVMC->READY == NVMC_READY_READY_Busy)
-	{
-			// Do nothing.
-	}
 }

@@ -88,7 +88,7 @@ static nrf_esb_payload_t tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00);
 static nrf_esb_payload_t rxfifo_empty_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xF1, 0xF0);
 static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x9A, 0x00);
 // static nrf_esb_payload_t bootloader_ack_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xFB, 0x55);
-static nrf_esb_payload_t debug_payload =          NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDB, 0xBB, 0x00, 0x00, 0x00);
+static nrf_esb_payload_t debug_payload =  NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0xDB, 0xBB, 0x00, 0x00, 0x00);
 //Other variables
 static uint32_t errcode;
 //declare callback handler from bootloader source file
@@ -281,7 +281,8 @@ void config_FPGA(void)
 	}
 }
 
-void spi_transaction() {
+void spi_transaction()
+ {
 	int i;
 	while (spibuffer_sz > 0 || nrf_drv_gpiote_in_is_set(26)) {
     //		SEGGER_RTT_printf(0,"Entered While loop");
@@ -350,6 +351,11 @@ void debug_pack(uint32_t data) {
 
 int main(void)
 {
+    //booltoader variables
+    int boot_state = 0;
+    uint32_t app_size = 0;
+
+
 		int i=0;
 		unsigned int fpgaimage_intcount = 0;
 		uint32_t tmp = 0;
@@ -491,35 +497,45 @@ int main(void)
 							NVIC_SystemReset();
 
 						}
-            if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) { //command to start bootloader mode
-              // errcode = bootloader_init(void); //no BLE code TODO returning invalid perameters
-              // debug_error(errcode);
+            if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) {
+
               // uint32_t softdevice_start;
-              // debug_pack(DFU_BANK_0_REGION_START); //0x2311D001
-              // debug_pack(DFU_BANK_1_REGION_START); //0X918CB001
-              // debug_pack(DFU_REGION_TOTAL_SIZE);   //0XDCF5CFFF
-              // debug_pack(SOFTDEVICE_REGION_START); //0X00001000
-              // debug_pack(DFU_APP_DATA_RESERVED);   //0X00000000
               // softdevice_start = flash_word_read((uint32_t *) 0x00003000);
-              debug_pack(0xF000000D);
-
-
-
               // uint32_t  test_store_data = 0xACABADAE;
-
               // init_flash(0);
               // debug_pack((uint32_t) &start_addr); //0X20000E04
               // uint32_t * dfu_bank_0;
               // dfu_bank_0 = (uint32_t *) DFU_BANK_1_REGION_START);
               // dfu_bank_0 = (uint32_t *) DFU_BANK_0_REGION_START);
               // debug_pack((uint32_t) dfu_bank_0);
-
               // flash_word_write(DFU_BANK_1_START, test_store_data);
-              //
-              // uint32_t test_load_data = flash_word_read(dfu_bank_0);
+              // uint32_t test_load_data = flash_word_read((uint32_t *) 0x00003000);
+              // debug_pack(test_load_data);
+              // test_load_data = flash_word_read((uint32_t *) 0x00003004);
+              // debug_pack(test_load_data);
 
-
-
+              //command to start bootloader mode
+              // errcode = bootloader_init(); //no BLE code TODO returning invalid perameters
+              // debug_pack(errcode);
+              // debug_pack(DFU_BANK_0_REGION_START); //0x2311D001
+              // debug_pack(DFU_BANK_1_REGION_START); //0X918CB001
+              // debug_pack(DFU_REGION_TOTAL_SIZE);   //0XDCF5CFFF
+              // debug_pack(SOFTDEVICE_REGION_START); //0X00001000
+              // debug_pack(DFU_APP_DATA_RESERVED);   //0X00000000
+            switch (boot_state) {
+              case 0 :
+                debug_pack(0xF000000D);
+                boot_state = 1;
+                break;
+              case 1 :
+                debug_pack(0xF00000DD);
+                boot_state = 0;
+                // convert from KB to hex
+                app_size = (rx_payload.data[5]*100000) + (rx_payload.data[6]*10000) + (rx_payload.data[7]*1000) ;
+                debug_pack(app_size);
+                break;
+              //once in bootloader mode send file size to show were to write the new file
+            }
 
 
 
