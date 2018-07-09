@@ -67,6 +67,7 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer/app_uti
 
 
 
+
 #assembly files common to all targets
 ASM_SOURCE_FILES  += \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/gcc/gcc_startup_nrf52.s) \
@@ -172,6 +173,8 @@ ASMFLAGS += -DNRF52_PAN_63
 ASMFLAGS += -DBOARD_CUSTOM
 ASMFLAGS += -DNRF52
 ASMFLAGS += -DBSP_DEFINES_ONLY
+ASMFLAGS += -D__HEAP_SIZE=0
+
 
 #default target - first one defined
 default: clean nrf52832_xxaa

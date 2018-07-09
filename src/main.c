@@ -53,9 +53,15 @@
 #include "nrf_mbr.h"
 #include "nrf_log.h"
 #include "pstorage.h"
+#include "crc16.h"
+
+#include "bootloader_settings.h"
 
 //include FPGA image
-INCBIN(FPGAimg, "FPGAimage.bin");
+// INCBIN(FPGAimg, "FPGAimage.bin"); //TODO uncoment before final version
+#define APPLICATION_SIZE 0x000111B4 //45KB app witout FPGA image or FPGA code
+const bootloader_settings_t * boot_settings;
+
 
 //Make Microcontroller NFC pins usable as GPIOs
 const uint32_t __attribute__((section (".uicr"))) UICR_ADDR_0x20C = 0xFFFFFFFE;
@@ -200,86 +206,86 @@ void Send_Clocks(int num_clocks)
 
 
 // void config_FPGA(int newimage_flag)
-void config_FPGA(void)
-{
-	int i=0;
-	// uint32_t fpgaimage_size;
-	// uint8_t* addr = (uint8_t*)start_addr;
-	//uint8_t* fpgaimage_addr;
-
-	//Set spi and creset pins as outputs
-	nrf_gpio_pin_dir_set(SPI0_CONFIG_SCK_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
-	nrf_gpio_pin_dir_set(SPI0_CONFIG_MOSI_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
-	nrf_gpio_pin_dir_set(SPI_CS_PIN2,NRF_GPIO_PIN_DIR_OUTPUT);
-	nrf_gpio_pin_dir_set(CS_RESET_B,NRF_GPIO_PIN_DIR_OUTPUT);
-	nrf_gpio_pin_dir_set(CDONE,NRF_GPIO_PIN_DIR_INPUT);
-
-	// Clear SSEL and CS_Reset
-	nrf_gpio_pin_clear(SPI_CS_PIN2);
-	nrf_gpio_pin_clear(CS_RESET_B);
-	nrf_gpio_pin_clear(SPI0_CONFIG_MOSI_PIN);
-
-	//Set clk
-	nrf_gpio_pin_set(SPI0_CONFIG_SCK_PIN);
-
-	//delay >200ns
-	nrf_delay_us(10);
-
-	//set creset high
-	nrf_gpio_pin_set(CS_RESET_B);
-
-	//delay >1.2ms
-	nrf_delay_ms(3);
-
-	//set ssel high
-	nrf_gpio_pin_set(SPI_CS_PIN2);
-
-	//send 8 clocks
-	Send_Clocks(8);
-  //INSTEAD OF SENDING THE FPGA IMAGE ACROSS IT WILL BE SAVED WITH THE IMPLANT APPLICATION. NO NEW IMAGE FLAG NEEDED
-	// if (newimage_flag == 1) { //we have a new FPGA image
-	// 	fpgaimage_size = *(start_addr+1);
-	// 	for (i=0;i<fpgaimage_size;i++)
-	// 	{
-  //
-	// 		bitbang_spi(*(addr+8+i));
-	// 	}
-  //
-	// 	//fpgaimage_addr = (uint8_t*)(start_addr+2);
-	// }
-	// else {
-		//fpgaimage_size = gFPGAimgSize;
-		//fpgaimage_addr = gFPGAimgData;
-		for (i=0;i<gFPGAimgSize;i++)
-		{
-			bitbang_spi(*(gFPGAimgData+i));
-		}
-	// }
-	//Program FPGA (call spi_bitbang) here
-	//Send file 1 byte at a time
-
-
-	//Take control of sck again
-	nrf_gpio_pin_set(SPI_CS_PIN2);
-
-	//send 100 clocks
-	Send_Clocks(100);
-
-	//Return pins to default configurations //Necessary?
-	nrf_gpio_cfg_default(SPI0_CONFIG_SCK_PIN );
-	nrf_gpio_cfg_default(SPI0_CONFIG_MOSI_PIN );
-
-	if   (	nrf_gpio_pin_read(CDONE)) {
-		return;// PASS if CDONE is true -
-	}
-	else {
-		validation_payload.data[3] = 0x00;
-		validation_payload.data[0] = packetid;
-		nrf_esb_write_payload(&validation_payload);
-		tx_fifo_size++;
-		packetid++;
-	}
-}
+// void config_FPGA(void) //TODO uncomment before final version
+// {
+// 	int i=0;
+// 	// uint32_t fpgaimage_size;
+// 	// uint8_t* addr = (uint8_t*)start_addr;
+// 	//uint8_t* fpgaimage_addr;
+//
+// 	//Set spi and creset pins as outputs
+// 	nrf_gpio_pin_dir_set(SPI0_CONFIG_SCK_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
+// 	nrf_gpio_pin_dir_set(SPI0_CONFIG_MOSI_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
+// 	nrf_gpio_pin_dir_set(SPI_CS_PIN2,NRF_GPIO_PIN_DIR_OUTPUT);
+// 	nrf_gpio_pin_dir_set(CS_RESET_B,NRF_GPIO_PIN_DIR_OUTPUT);
+// 	nrf_gpio_pin_dir_set(CDONE,NRF_GPIO_PIN_DIR_INPUT);
+//
+// 	// Clear SSEL and CS_Reset
+// 	nrf_gpio_pin_clear(SPI_CS_PIN2);
+// 	nrf_gpio_pin_clear(CS_RESET_B);
+// 	nrf_gpio_pin_clear(SPI0_CONFIG_MOSI_PIN);
+//
+// 	//Set clk
+// 	nrf_gpio_pin_set(SPI0_CONFIG_SCK_PIN);
+//
+// 	//delay >200ns
+// 	nrf_delay_us(10);
+//
+// 	//set creset high
+// 	nrf_gpio_pin_set(CS_RESET_B);
+//
+// 	//delay >1.2ms
+// 	nrf_delay_ms(3);
+//
+// 	//set ssel high
+// 	nrf_gpio_pin_set(SPI_CS_PIN2);
+//
+// 	//send 8 clocks
+// 	Send_Clocks(8);
+//   //INSTEAD OF SENDING THE FPGA IMAGE ACROSS IT WILL BE SAVED WITH THE IMPLANT APPLICATION. NO NEW IMAGE FLAG NEEDED
+// 	// if (newimage_flag == 1) { //we have a new FPGA image
+// 	// 	fpgaimage_size = *(start_addr+1);
+// 	// 	for (i=0;i<fpgaimage_size;i++)
+// 	// 	{
+//   //
+// 	// 		bitbang_spi(*(addr+8+i));
+// 	// 	}
+//   //
+// 	// 	//fpgaimage_addr = (uint8_t*)(start_addr+2);
+// 	// }
+// 	// else {
+// 		//fpgaimage_size = gFPGAimgSize;
+// 		//fpgaimage_addr = gFPGAimgData;
+// 		for (i=0;i<gFPGAimgSize;i++)
+// 		{
+// 			bitbang_spi(*(gFPGAimgData+i));
+// 		}
+// 	// }
+// 	//Program FPGA (call spi_bitbang) here
+// 	//Send file 1 byte at a time
+//
+//
+// 	//Take control of sck again
+// 	nrf_gpio_pin_set(SPI_CS_PIN2);
+//
+// 	//send 100 clocks
+// 	Send_Clocks(100);
+//
+// 	//Return pins to default configurations //Necessary?
+// 	nrf_gpio_cfg_default(SPI0_CONFIG_SCK_PIN );
+// 	nrf_gpio_cfg_default(SPI0_CONFIG_MOSI_PIN );
+//
+// 	if   (	nrf_gpio_pin_read(CDONE)) {
+// 		return;// PASS if CDONE is true -
+// 	}
+// 	else {
+// 		validation_payload.data[3] = 0x00;
+// 		validation_payload.data[0] = packetid;
+// 		nrf_esb_write_payload(&validation_payload);
+// 		tx_fifo_size++;
+// 		packetid++;
+// 	}
+// }
 
 void spi_transaction()
  {
@@ -353,7 +359,11 @@ int main(void)
 {
     //booltoader variables
     int boot_state = 0;
-    uint32_t app_size = 0;
+    uint32_t new_app_size = 0;
+
+    //bootloader
+    dfu_update_status_t app_status;
+
 
 
 		int i=0;
@@ -417,30 +427,39 @@ int main(void)
 					tx_fifo_size = 1;
 				}
 				//nrf_esb_flush_tx();
-				if (rx_payload.length%2 == 0) { //If payload contains even number of bytes then it is a data packet to be transmitted to chip
-					//Transfer data to intermediate buffer
-					int length = rx_payload.length/2;
+				if (rx_payload.length%2 == 0) { //If payload contains even number of bytes then it is a data packet
+          switch (boot_state) {
+            case 1 :
+              for (i=0;i<rx_payload.length;i++) {
+                // write data to memory TODO
+              }
+              break;
 
-					SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip",length);
-					for (i=0;i<length;i++) {
-						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i];
-						spibuffer_w_ptr++;
-						spibuffer_sz++;
-						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i+1];
-						if ((spibuffer_w_ptr+1) >= 1024) {
-							spibuffer_w_ptr = 0;
-							spibuffer_sz++;
-						}
-						else {
-							spibuffer_w_ptr++;
-							spibuffer_sz++;
-						}
-						if (spibuffer_w_ptr == spibuffer_r_ptr) {
-							//ERROR CONDITION WE ARE OVERWRITING UNSENT DATA; NOTIFY USER (TODO)
-						}
-					}
-					//Load SPI buffers and fire
-					spi_transaction();
+            default: //to be transmitted to chip
+
+              //Transfer data to intermediate buffer
+              SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip",rx_payload.length/2);
+              for (i=0;i<rx_payload.length/2;i++) {
+                transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i];
+                spibuffer_w_ptr++;
+                spibuffer_sz++;
+                transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i+1];
+                if ((spibuffer_w_ptr+1) >= 1024) {
+                  spibuffer_w_ptr = 0;
+                  spibuffer_sz++;
+                }
+                else {
+                  spibuffer_w_ptr++;
+                  spibuffer_sz++;
+                }
+                if (spibuffer_w_ptr == spibuffer_r_ptr) {
+                  //ERROR CONDITION WE ARE OVERWRITING UNSENT DATA; NOTIFY USER (TODO)
+                }
+              }
+              //Load SPI buffers and fire
+              spi_transaction();
+              break;
+          }
 				}
 				else { //If payload contains odd number of bytes then it is a command packet
 					if (rx_payload.data[0] == 0x61) {
@@ -499,42 +518,89 @@ int main(void)
 						}
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) {
 
-              // uint32_t softdevice_start;
-              // softdevice_start = flash_word_read((uint32_t *) 0x00003000);
-              // uint32_t  test_store_data = 0xACABADAE;
-              // init_flash(0);
-              // debug_pack((uint32_t) &start_addr); //0X20000E04
-              // uint32_t * dfu_bank_0;
-              // dfu_bank_0 = (uint32_t *) DFU_BANK_1_REGION_START);
-              // dfu_bank_0 = (uint32_t *) DFU_BANK_0_REGION_START);
-              // debug_pack((uint32_t) dfu_bank_0);
-              // flash_word_write(DFU_BANK_1_START, test_store_data);
-              // uint32_t test_load_data = flash_word_read((uint32_t *) 0x00003000);
-              // debug_pack(test_load_data);
-              // test_load_data = flash_word_read((uint32_t *) 0x00003004);
-              // debug_pack(test_load_data);
-
-              //command to start bootloader mode
-              // errcode = bootloader_init(); //no BLE code TODO returning invalid perameters
-              // debug_pack(errcode);
-              // debug_pack(DFU_BANK_0_REGION_START); //0x2311D001
-              // debug_pack(DFU_BANK_1_REGION_START); //0X918CB001
-              // debug_pack(DFU_REGION_TOTAL_SIZE);   //0XDCF5CFFF
-              // debug_pack(SOFTDEVICE_REGION_START); //0X00001000
-              // debug_pack(DFU_APP_DATA_RESERVED);   //0X00000000
             switch (boot_state) {
-              case 0 :
-                debug_pack(0xF000000D);
+              case 0 : //initiate boot
+
+                //set bootloader perameters to the correct values
+                *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
+                if(NRF_FICR->CODEPAGESIZE != CODE_PAGE_SIZE){ debug_pack(0xC0DE515E); }
+
+              (void)bootloader_init(); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
+
+                // debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
+                // debug_pack(PSTORAGE_DATA_START_ADDR);
+                // debug_pack(PSTORAGE_NUM_OF_PAGES);
+                // debug_pack(PSTORAGE_FLASH_PAGE_END);
+                // debug_pack(PSTORAGE_DATA_START_ADDR);
+                // debug_pack(PSTORAGE_DATA_END_ADDR);
+                bootloader_util_settings_get(&boot_settings);
+                // debug_pack((uint32_t) boot_settings->bank_0);
+                //
+                // update_dfu_params(APPLICATION_SIZE, DFU_UPDATE_APP_COMPLETE);
+                //
+
                 boot_state = 1;
                 break;
-              case 1 :
+
+              case 1 : //check size contstraints
+
                 debug_pack(0xF00000DD);
-                boot_state = 0;
                 // convert from KB to hex
-                app_size = (rx_payload.data[5]*100000) + (rx_payload.data[6]*10000) + (rx_payload.data[7]*1000) ;
-                debug_pack(app_size);
+                new_app_size = (rx_payload.data[5]*100000) + (rx_payload.data[6]*10000) + (rx_payload.data[7]*1000);
+                debug_pack(new_app_size);
+
+                //Determine if the new application will fit before trying to write.
+                uint32_t NEW_APP_END = APPLICATION_SIZE + new_app_size;
+                if(NEW_APP_END > BOOTLOADER_REGION_START){debug_pack(NEW_APP_END - BOOTLOADER_REGION_START);} //new app is too large, send the overflow back
+                else{debug_pack(NEW_APP_END);} //app size is fine, send the size back for debug.
+
+
+                boot_state = 2; //TODO change to 2 when vlaidation is working to test writing
                 break;
-              //once in bootloader mode send file size to show were to write the new file
+
+
+              case 2 : //TODO write app to vald address
+
+                bootloader_util_settings_get(&boot_settings);
+                debug_pack((uint32_t) boot_settings->bank_0_crc);
+                debug_pack(sizeof(bootloader_settings_t));
+                //perform valiation
+                if(bootloader_app_is_valid(0x00000000)){
+                  debug_pack(0xF000D505);
+                }
+                else{debug_pack(0xF000D404); }
+
+                bootloader_util_settings_get(&boot_settings);
+                debug_pack((uint32_t) boot_settings->bank_0_crc);
+                boot_state = 3;
+                break;
+
+
+              case 3 : //validate new application
+                // test code to validate and oot from curently running app
+                app_status.app_size = APPLICATION_SIZE;
+                app_status.status_code = DFU_UPDATE_APP_COMPLETE;
+                app_status.app_crc = 0x00;
+                uint32_t errcode = bootloader_dfu_update_process(app_status); //breaks here???
+                debug_pack(0xF000000D);
+                debug_pack(errcode);
+                  //print bootloader settings
+                  // debug_pack((uint32_t) boot_settings->bank_0);
+                  // debug_pack((uint32_t) boot_settings->bank_1);
+                  // debug_pack((uint32_t) boot_settings->bank_0_size);
+                  // // debug_pack((uint32_t) boot_settings->sd_image_size);
+                  // // debug_pack((uint32_t) boot_settings->bl_image_size);
+                  // debug_pack((uint32_t) boot_settings->app_image_size);
+                  // debug_pack((uint32_t) boot_settings->sd_image_start);
+
+
+                //Boot from valid application
+                boot_state = 0;
+                break;
+
+              default : //bootstate mismatch, send it back for debug
+                debug_pack(0x404FF404);
+                debug_pack((uint32_t) boot_state);
             }
 
 
