@@ -11,7 +11,7 @@ uint32_t * start_addr;
  * Function for erasing a page in flash.
  * @param page_address Address of the first word in the page to be erased.
  */
-void flash_page_erase(uint32_t * page_address)
+void flashwriting_page_erase(uint32_t * page_address)
 {
     // Turn on flash erase enable and wait until the NVMC is ready:
     NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Een << NVMC_CONFIG_WEN_Pos);
@@ -89,7 +89,7 @@ void init_flash(int erase)
 			// Set address:
 			addr = (uint32_t *)(start_addr + j*pg_size/4); //Divide by 4 because address is a count of 32 bit words and pg_size is a count of bytes
 			// Erase page:
-			flash_page_erase(addr);
+			flashwriting_page_erase(addr);
 		}
 	}
 }
@@ -118,7 +118,14 @@ bool flash_array_write(uint32_t * address, uint8_t dataIn[], uint32_t dataLength
 	return true;
 }
 
+//function to write words, currently for BootLoader data to be saved and eliminate the need for a soft device.
+void flashwriting_block_write(uint32_t * address, uint32_t const * const dataIn, uint32_t dataLength){
 
+
+  for (int j=0; j<dataLength; j +=4){
+    flash_word_write(address+j, *(dataIn + j));
+  }
+}
 uint32_t flash_word_read(uint32_t * address)
 {
 	//ensure read only is Enabled

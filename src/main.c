@@ -525,21 +525,29 @@ int main(void)
                 *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
                 if(NRF_FICR->CODEPAGESIZE != CODE_PAGE_SIZE){ debug_pack(0xC0DE515E); }
 
-              (void)bootloader_init(); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
+                debug_pack(bootloader_init()); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
 
-                // debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
-                // debug_pack(PSTORAGE_DATA_START_ADDR);
-                // debug_pack(PSTORAGE_NUM_OF_PAGES);
-                // debug_pack(PSTORAGE_FLASH_PAGE_END);
-                // debug_pack(PSTORAGE_DATA_START_ADDR);
-                // debug_pack(PSTORAGE_DATA_END_ADDR);
+                debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
+                debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
+
                 bootloader_util_settings_get(&boot_settings);
                 // debug_pack((uint32_t) boot_settings->bank_0);
-                //
-                // update_dfu_params(APPLICATION_SIZE, DFU_UPDATE_APP_COMPLETE);
-                //
 
-                boot_state = 1;
+                flash_word_write((uint32_t *) boot_settings, 0x010000FF);
+                bootloader_util_settings_get(&boot_settings);
+
+
+                // flashwriting_page_erase((uint32_t *)BOOTLOADER_SETTINGS_ADDRESS);
+                // flashwriting_block_write((uint32_t *)BOOTLOADER_SETTINGS_ADDRESS, (uint32_t const * const) boot_settings, sizeof(bootloader_settings_t));
+                // debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
+
+                bootloader_util_settings_get(&boot_settings);
+                
+                debug_pack((uint32_t) boot_settings->bank_0);
+                debug_pack((uint32_t) boot_settings->bank_0_crc);
+                debug_pack((uint32_t) boot_settings->bank_1);
+
+                // boot_state = 1; TODO
                 break;
 
               case 1 : //check size contstraints
@@ -572,6 +580,13 @@ int main(void)
 
                 bootloader_util_settings_get(&boot_settings);
                 debug_pack((uint32_t) boot_settings->bank_0_crc);
+
+                debug_pack((uint32_t)pstorage_flash_page_size());
+
+
+                // bootloader_app_start(0x00000000);
+
+
                 boot_state = 3;
                 break;
 
@@ -580,18 +595,17 @@ int main(void)
                 // test code to validate and oot from curently running app
                 app_status.app_size = APPLICATION_SIZE;
                 app_status.status_code = DFU_UPDATE_APP_COMPLETE;
-                app_status.app_crc = 0x00;
-                uint32_t errcode = bootloader_dfu_update_process(app_status); //breaks here???
+                app_status.app_crc = 0x04;
+                uint32_t err_code = bootloader_dfu_update_process(app_status);
+                debug_pack(err_code); //breaks here???
                 debug_pack(0xF000000D);
-                debug_pack(errcode);
-                  //print bootloader settings
-                  // debug_pack((uint32_t) boot_settings->bank_0);
-                  // debug_pack((uint32_t) boot_settings->bank_1);
-                  // debug_pack((uint32_t) boot_settings->bank_0_size);
-                  // // debug_pack((uint32_t) boot_settings->sd_image_size);
-                  // // debug_pack((uint32_t) boot_settings->bl_image_size);
-                  // debug_pack((uint32_t) boot_settings->app_image_size);
-                  // debug_pack((uint32_t) boot_settings->sd_image_start);
+
+                bootloader_util_settings_get(&boot_settings);
+                debug_pack((uint32_t) boot_settings->bank_0_crc);
+                if(bootloader_app_is_valid(0x00000000)){
+                  debug_pack(0xF000D505);
+                }
+                else{debug_pack(0xF000D404); }
 
 
                 //Boot from valid application
