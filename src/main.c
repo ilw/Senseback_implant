@@ -362,7 +362,7 @@ int main(void)
     uint32_t new_app_size = 0;
 
     //bootloader
-    dfu_update_status_t app_status;
+    // dfu_update_status_t app_status;
 
 
 
@@ -529,25 +529,20 @@ int main(void)
 
                 debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
                 debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
-
-                bootloader_util_settings_get(&boot_settings);
-                // debug_pack((uint32_t) boot_settings->bank_0);
-
-                flash_word_write((uint32_t *) boot_settings, 0x010000FF);
                 bootloader_util_settings_get(&boot_settings);
 
 
-                // flashwriting_page_erase((uint32_t *)BOOTLOADER_SETTINGS_ADDRESS);
-                // flashwriting_block_write((uint32_t *)BOOTLOADER_SETTINGS_ADDRESS, (uint32_t const * const) boot_settings, sizeof(bootloader_settings_t));
-                // debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
-
+                //se the current app to be valid and the new app to be NULL (not present)
+                flash_word_write((uint32_t *) boot_settings, 0x00000001);
                 bootloader_util_settings_get(&boot_settings);
-                
-                debug_pack((uint32_t) boot_settings->bank_0);
-                debug_pack((uint32_t) boot_settings->bank_0_crc);
-                debug_pack((uint32_t) boot_settings->bank_1);
 
-                // boot_state = 1; TODO
+                //validate current application with CRC check
+                if(bootloader_app_is_valid(0x00000000)){
+                  debug_pack(0xF000D505);
+                }
+                else{debug_pack(0xF000D404); }
+
+                boot_state = 1;
                 break;
 
               case 1 : //check size contstraints
@@ -569,19 +564,10 @@ int main(void)
 
               case 2 : //TODO write app to vald address
 
-                bootloader_util_settings_get(&boot_settings);
-                debug_pack((uint32_t) boot_settings->bank_0_crc);
-                debug_pack(sizeof(bootloader_settings_t));
-                //perform valiation
-                if(bootloader_app_is_valid(0x00000000)){
-                  debug_pack(0xF000D505);
-                }
-                else{debug_pack(0xF000D404); }
 
-                bootloader_util_settings_get(&boot_settings);
-                debug_pack((uint32_t) boot_settings->bank_0_crc);
 
-                debug_pack((uint32_t)pstorage_flash_page_size());
+
+
 
 
                 // bootloader_app_start(0x00000000);
@@ -593,22 +579,18 @@ int main(void)
 
               case 3 : //validate new application
                 // test code to validate and oot from curently running app
-                app_status.app_size = APPLICATION_SIZE;
-                app_status.status_code = DFU_UPDATE_APP_COMPLETE;
-                app_status.app_crc = 0x04;
-                uint32_t err_code = bootloader_dfu_update_process(app_status);
-                debug_pack(err_code); //breaks here???
-                debug_pack(0xF000000D);
 
-                bootloader_util_settings_get(&boot_settings);
-                debug_pack((uint32_t) boot_settings->bank_0_crc);
                 if(bootloader_app_is_valid(0x00000000)){
                   debug_pack(0xF000D505);
                 }
                 else{debug_pack(0xF000D404); }
 
 
+
                 //Boot from valid application
+                bootloader_util_app_start(0x00000000);
+
+                debug_pack(0xF00FF00D);
                 boot_state = 0;
                 break;
 
