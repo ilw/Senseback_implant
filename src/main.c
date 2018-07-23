@@ -362,14 +362,14 @@ int main(void)
     uint32_t new_app_size = 0;
 
     //bootloader
-    // dfu_update_status_t app_status;
+
 
 
 
 		int i=0;
 		unsigned int fpgaimage_intcount = 0;
 		uint32_t tmp = 0;
-
+    uint32_t data =0;
 		SEGGER_RTT_Init();
 	//Start clocks and init ESB
 	clocks_start();
@@ -417,6 +417,13 @@ int main(void)
 	APP_ERROR_CHECK(nrf_esb_start_rx());
 
 	while(true) {
+    //if bootloader ready
+    if(boot_state == 4) {
+      //Boot from valid application
+      bootloader_util_app_start(0x00000000);
+    }
+
+    //communincation loop
 		if (readpackets_flag == 1) {
 			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) { //manual setting of payload prevented by this validation
 				tx_fifo_size--;
@@ -516,92 +523,112 @@ int main(void)
 							NVIC_SystemReset();
 
 						}
+            //ASCI 'B' sent for bootloader states
             if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x55) && rx_payload.data[2] == 0xAA) {
 
-            switch (boot_state) {
-              case 0 : //initiate boot
+              switch (boot_state) {
+                case 0 : //initiate boot
+                  //tell the controller which state you are in
+                  debug_pack(0xBBBB0000);
 
-                //set bootloader perameters to the correct values
-                *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
-                if(NRF_FICR->CODEPAGESIZE != CODE_PAGE_SIZE){ debug_pack(0xC0DE515E); }
+                  //set bootloader perameters to the correct values
+                  *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
+                  if(NRF_FICR->CODEPAGESIZE != CODE_PAGE_SIZE){ debug_pack(0xC0DE515E); }
 
-                debug_pack(bootloader_init()); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
+                  debug_pack(bootloader_init()); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
 
-                debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
-                debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
-                bootloader_util_settings_get(&boot_settings);
+                  debug_pack(BOOTLOADER_SETTINGS_ADDRESS);
+                  debug_pack(* (uint32_t *) BOOTLOADER_SETTINGS_ADDRESS);
+                  bootloader_util_settings_get(&boot_settings);
 
+                  //set the current app to be valid and the new app to be NULL (not present)
+                  flash_word_write((uint32_t *) boot_settings, 0x00000001);
+                  bootloader_util_settings_get(&boot_settings);
 
-                //se the current app to be valid and the new app to be NULL (not present)
-                flash_word_write((uint32_t *) boot_settings, 0x00000001);
-                bootloader_util_settings_get(&boot_settings);
+                  //validate current application with CRC check
+                  if(bootloader_app_is_valid(0x00000000)){
+                    debug_pack(0xF000D505);
+                  }
+                  else{ debug_pack(0xF000D404); }
 
-                //validate current application with CRC check
-                if(bootloader_app_is_valid(0x00000000)){
-                  debug_pack(0xF000D505);
-                }
-                else{debug_pack(0xF000D404); }
+                  boot_state = 1; //TODO remove after testing
+                  break;
 
-                boot_state = 1;
-                break;
+                case 1 : //check size contstraints
+                  //tell the controller which state you are in
+                  debug_pack(0xBBBB1111);
 
-              case 1 : //check size contstraints
+                  // convert from KB to hex
+                  new_app_size = (rx_payload.data[5]*100000) + (rx_payload.data[6]*10000) + (rx_payload.data[7]*1000) + (rx_payload.data[8]*100) + (rx_payload.data[9]*10) + (rx_payload.data[10]);
+                  debug_pack(new_app_size);
 
-                debug_pack(0xF00000DD);
-                // convert from KB to hex
-                new_app_size = (rx_payload.data[5]*100000) + (rx_payload.data[6]*10000) + (rx_payload.data[7]*1000);
-                debug_pack(new_app_size);
+                  //Determine if the new application will fit before trying to write.
+                  uint32_t new_app_start = BOOTLOADER_REGION_START - new_app_size;
+                  if(new_app_start < APPLICATION_SIZE){
+                    debug_pack(0xB199B011); //new app too large, send overflow back
+                    boot_state = 0;
+                  }
 
-                //Determine if the new application will fit before trying to write.
-                uint32_t NEW_APP_END = APPLICATION_SIZE + new_app_size;
-                if(NEW_APP_END > BOOTLOADER_REGION_START){debug_pack(NEW_APP_END - BOOTLOADER_REGION_START);} //new app is too large, send the overflow back
-                else{debug_pack(NEW_APP_END);} //app size is fine, send the size back for debug.
+                  else{
+                    debug_pack(new_app_start);
+                    boot_state = 2;
+                  } //app size is fine, send the size back for debug.
 
-
-                boot_state = 2; //TODO change to 2 when vlaidation is working to test writing
-                break;
-
-
-              case 2 : //TODO write app to vald address
-
-
-
-
-
-
-
-                // bootloader_app_start(0x00000000);
+                  debug_pack(flash_word_read((uint32_t *) 0x40000));
+                  boot_state = 2; //TODO remove after testing
+                  break;
 
 
-                boot_state = 3;
-                break;
+                case 2 : //TODO write app to valid address
+                  //tell the controller which state you are in
+
+                  debug_pack(0xBBBB2222);
+
+                  for(uint32_t x=0; x<0x40000; x= x+4){
+                    data = flash_word_read((uint32_t * ) x);
+                    flash_word_write((uint32_t *) (0x40000 + x), data);
+                  }
 
 
-              case 3 : //validate new application
-                // test code to validate and oot from curently running app
+                  nrf_delay_ms(1000);
 
-                if(bootloader_app_is_valid(0x00000000)){
-                  debug_pack(0xF000D505);
-                }
-                else{debug_pack(0xF000D404); }
+                  debug_pack(0xF00DF00D);
 
+                  nrf_delay_ms(1000);
 
+                  bootloader_util_app_start(0x00040000);
 
-                //Boot from valid application
-                bootloader_util_app_start(0x00000000);
+                  boot_state = 3;
+                  break;
 
-                debug_pack(0xF00FF00D);
-                boot_state = 0;
-                break;
+                case 3 :
+                  //tell the controller which state you are in
+                  debug_pack(0xBBBB3333);
 
-              default : //bootstate mismatch, send it back for debug
-                debug_pack(0x404FF404);
-                debug_pack((uint32_t) boot_state);
-            }
+                  //validate new application
 
+                  // test code to validate and oot from curently running app
+                  if(bootloader_app_is_valid(0x00000000)){
+                    debug_pack(0xF000D505);
+                    nrf_delay_ms(1000); //delay to allow the data to go back over to the controller before reset
+                    boot_state = 4;
+                  }
 
+                  else{
+                    debug_pack(0xF000D404);
+                    boot_state = 0;
+                  }
 
-              break; //TODO remove this when the booloader sequence works as it should reset here
+                  break;
+
+                default : //bootstate mismatch or restart failed, send it back for debug
+                  debug_pack(0xB404B404);
+                  debug_pack((uint32_t) boot_state);
+
+                  boot_state = 0;
+                  break;
+              }
+
             }
 
 						if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB)) { //Command: begin fpga image upload
@@ -621,11 +648,11 @@ int main(void)
 
 						else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xCC)) { //Command: validate fpga image
 							fpga_accept_flag = 1;
-							tmp = *((uint32_t*)(rx_payload.data+3));
+							tmp = *((uint32_t*)(rx_payload.data+3)); //load checksum from payload
 							//if (fpgaimage_intcount != FPGAIMAGE_SIZE) {fpga_accept_flag = 0;}
 							if (fpga_checksum != tmp) {fpga_accept_flag = 0;}
 							if (fpga_accept_flag == 1) {
-								flash_array_write((uint32_t *)(start_addr),&rx_payload.data[3],2,&fpga_checksum);
+								flash_array_write((uint32_t *)(start_addr),&rx_payload.data[3],2,&fpga_checksum);//save checksum and image size.
 								validation_payload.data[3] = 0x01;
 								validation_payload.data[0] = packetid;
 								nrf_esb_write_payload(&validation_payload);
