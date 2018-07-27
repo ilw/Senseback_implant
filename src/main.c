@@ -357,6 +357,33 @@ void debug_pack(uint32_t data) {
 
 int main(void)
 {
+
+    //save the UCIR address manully to reduce the size of the bin fin for each applcation
+    extern char _eapp, _uicr ,  _euicr;
+                // __start_fs_data, //data start address
+                // __stop_fs_data;  //data end address
+    //define pointer to the start of both the load and virtual memory addresses for the UCIR data
+    char *src = &_eapp;
+    char *dst = &_uicr;
+
+    // debug_pack((uint32_t) src);
+    // debug_pack((uint32_t) dst);
+    // write the UCIR data across on boot, this should be indpendant of the start address of the application
+    while(dst < &_euicr){
+      *dst = *src;
+      *src = 0xFF; //write flash mask to the temp storage address
+      dst++;
+      src++;
+    }
+
+
+
+
+
+    // debug_pack((uint32_t) &_ucir);
+    //set bootloader perameters to the correct values
+    *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
+
     //booltoader variables
     int boot_state = 0;
     uint32_t new_app_size = 0;
@@ -369,7 +396,6 @@ int main(void)
 		int i=0;
 		unsigned int fpgaimage_intcount = 0;
 		uint32_t tmp = 0;
-    uint32_t data =0;
 		SEGGER_RTT_Init();
 	//Start clocks and init ESB
 	clocks_start();
@@ -418,10 +444,10 @@ int main(void)
 
 	while(true) {
     //if bootloader ready
-    if(boot_state == 4) {
-      //Boot from valid application
-      bootloader_util_app_start(0x00000000);
-    }
+    // if(boot_state == 4) {
+    //   //Boot from valid application
+    //   bootloader_util_app_start(0x00000000);
+    // }
 
     //communincation loop
 		if (readpackets_flag == 1) {
@@ -531,8 +557,7 @@ int main(void)
                   //tell the controller which state you are in
                   debug_pack(0xBBBB0000);
 
-                  //set bootloader perameters to the correct values
-                  *((uint32_t *)NRF_UICR_BOOT_START_ADDRESS) = BOOTLOADER_REGION_START;
+
                   if(NRF_FICR->CODEPAGESIZE != CODE_PAGE_SIZE){ debug_pack(0xC0DE515E); }
 
                   debug_pack(bootloader_init()); //returns invalid perameters beause of registering memory past the storage point of pstorage, but this is fine.
@@ -563,18 +588,20 @@ int main(void)
                   debug_pack(new_app_size);
 
                   //Determine if the new application will fit before trying to write.
-                  uint32_t new_app_start = BOOTLOADER_REGION_START - new_app_size;
+                  uint32_t new_app_start = BOOTLOADER_REGION_START - new_app_size - 4;
                   if(new_app_start < APPLICATION_SIZE){
                     debug_pack(0xB199B011); //new app too large, send overflow back
                     boot_state = 0;
                   }
 
                   else{
+                    //set the write address of the new app for the flashwriting library
+                    start_addr = (uint32_t *) new_app_start;
                     debug_pack(new_app_start);
                     boot_state = 2;
                   } //app size is fine, send the size back for debug.
 
-                  debug_pack(flash_word_read((uint32_t *) 0x40000));
+
                   boot_state = 2; //TODO remove after testing
                   break;
 
@@ -584,40 +611,29 @@ int main(void)
 
                   debug_pack(0xBBBB2222);
 
-                  for(uint32_t x=0; x<0x40000; x= x+4){
-                    data = flash_word_read((uint32_t * ) x);
-                    flash_word_write((uint32_t *) (0x40000 + x), data);
+
+                  if(bootloader_app_is_valid(new_app_start + 4)){
+                    debug_pack(0xF000D505);
+                    nrf_delay_ms(1000); //delay to allow the data to go back over to the controller before reset
+                    boot_state = 3;
+                  }
+                  else{
+                    debug_pack(0xF000D404);
+                    boot_state = 0;
                   }
 
-
-                  nrf_delay_ms(1000);
-
-                  debug_pack(0xF00DF00D);
-
-                  nrf_delay_ms(1000);
-
-                  bootloader_util_app_start(0x00040000);
-
-                  boot_state = 3;
+                  boot_state = 3; //TODO remove when validation works
                   break;
 
                 case 3 :
                   //tell the controller which state you are in
                   debug_pack(0xBBBB3333);
 
-                  //validate new application
+                  //boot
+                  nrf_delay_ms(1000); //dely so controller can receive new state before boot
 
-                  // test code to validate and oot from curently running app
-                  if(bootloader_app_is_valid(0x00000000)){
-                    debug_pack(0xF000D505);
-                    nrf_delay_ms(1000); //delay to allow the data to go back over to the controller before reset
-                    boot_state = 4;
-                  }
+                  bootloader_util_app_start( new_app_start + 4);
 
-                  else{
-                    debug_pack(0xF000D404);
-                    boot_state = 0;
-                  }
 
                   break;
 
@@ -675,7 +691,7 @@ int main(void)
 						}
 						else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A)) { //Packet is fpga image data
 							if (fpga_accept_flag == 2) {
-								flash_array_write((uint32_t *)(start_addr+fpgaimage_intcount+2),&rx_payload.data[3],rx_payload.data[2],&fpga_checksum);
+								flash_array_write((uint32_t *)(start_addr+fpgaimage_intcount+4),&rx_payload.data[3],rx_payload.data[2],&fpga_checksum);
 								//nrf_delay_ms(100);
 								fpgaimage_intcount += rx_payload.data[2];
 								validation_payload.data[3] = 0x01;

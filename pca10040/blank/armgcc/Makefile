@@ -203,7 +203,7 @@ vpath %.s $(ASM_PATHS)
 OBJECTS = $(C_OBJECTS) $(ASM_OBJECTS)
 
 nrf52832_xxaa: OUTPUT_FILENAME := nrf52832_xxaa
-nrf52832_xxaa: LINKER_SCRIPT=blinky_gcc_nrf52.ld
+nrf52832_xxaa: LINKER_SCRIPT=xblinky_gcc_nrf52.ld
 
 nrf52832_xxaa: $(BUILD_DIRECTORIES) $(OBJECTS)
 	@echo Linking target: $(OUTPUT_FILENAME).out
