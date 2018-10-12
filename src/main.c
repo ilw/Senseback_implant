@@ -76,9 +76,11 @@ static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0x
 
 //Other variables
 static uint32_t errcode;
+static int connected=0;
 
 //Instantiate timer (for use during recording to repeatedly query the device)
 const nrf_drv_timer_t TIMER_TX = NRF_DRV_TIMER_INSTANCE(3);
+
 
 
 //Start system high freq clock
@@ -334,11 +336,16 @@ void spi_transaction() {
 
 void timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
-	uint32_t 	interrupts;
+
     switch(event_type)
     {
-        case NRF_TIMER_EVENT_COMPARE0: {
-        	nrf_esb_get_clear_interrupts	(&interrupts);
+        case NRF_TIMER_EVENT_COMPARE0: {//Time out - connection to controller lost
+        	if (connected)
+        	{
+				nrf_gpio_pin_clear(CHIP_RESET_PIN); //Reset chip
+				nrf_delay_ms(200);
+				NVIC_SystemReset();
+        	}
 			break;
         }
         default:
@@ -350,7 +357,7 @@ void timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 void init()
 {
 	int i=0;
-	uint32_t time_ms = 5000; //Timer watchdog interval for loss of connection (clears interrupts)
+	uint32_t time_ms = 7000; //Timer watchdog interval for loss of connection (clears interrupts)
 	uint32_t time_ticks;
 	uint32_t err_code;
 	err_code = nrf_drv_timer_init(&TIMER_TX, NULL, timer_event_handler);
@@ -422,8 +429,9 @@ int main(void)
 
 	SEGGER_RTT_printf(0,"Senseback bluetooth (ESB) starting\n");
 
-	while(true) {
+	while(true) { //Should switch to some sort of WFE monitoring readpackets and spitransaction
 		if (readpackets_flag == 1) {
+			connected =1;
 			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) {
 				nrf_drv_timer_clear(&TIMER_TX);
 				//SEGGER_RTT_printf(0,"Packet received\n");
@@ -531,7 +539,7 @@ int main(void)
 					}
 
 				}
-				else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A)) { //Packet is fpga image data
+				else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A)) { //Packet is fpga image data (TODO) what if the first by of data is BB or CC??
 					if (fpga_accept_flag == 2) {
 						flash_array_write((uint32_t *)(start_addr+fpgaimage_intcount+2),&rx_payload.data[3],rx_payload.data[2],&fpga_checksum);
 						//nrf_delay_ms(100);
@@ -562,6 +570,12 @@ int main(void)
 		if (spitransaction_flag == 1) {
 			spi_transaction();
 		}
+
+
+	    __WFE();
+	    __SEV();
+	    __WFE();
+
     }
 }
 
