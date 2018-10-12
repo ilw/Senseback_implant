@@ -347,36 +347,34 @@ void timer_event_handler(nrf_timer_event_t event_type, void* p_context)
     }
 }
 
-int main(void)
+void init()
 {
-		int i=0;
-		unsigned int fpgaimage_intcount = 0;
-		uint32_t tmp = 0;
-		uint32_t time_ms = 1000; //Timer interval (query rate during recording)
-		uint32_t time_ticks;
-		uint32_t err_code;
-		err_code = nrf_drv_timer_init(&TIMER_TX, NULL, timer_event_handler);
-		APP_ERROR_CHECK(err_code);
-		time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_TX, time_ms);
-		nrf_drv_timer_extended_compare(&TIMER_TX, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
+	int i=0;
+	uint32_t time_ms = 5000; //Timer watchdog interval for loss of connection (clears interrupts)
+	uint32_t time_ticks;
+	uint32_t err_code;
+	err_code = nrf_drv_timer_init(&TIMER_TX, NULL, timer_event_handler);
+	APP_ERROR_CHECK(err_code);
+	time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_TX, time_ms);
+	nrf_drv_timer_extended_compare(&TIMER_TX, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
 
-
-		SEGGER_RTT_Init();
+	SEGGER_RTT_Init();
 	//Start clocks and init ESB
 	clocks_start();
 	esb_init();
 	SEGGER_RTT_printf(0,"Senseback Implant starting\n");
 
+	//Set up pins for programming FPGA
 	nrf_gpio_pin_dir_set(CHIP_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
 	init_flash(0); //Call the function to initialize flash variables (start address location etc) without erasing any flash.
 	nrf_gpio_pin_dir_set(FPGA_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
 	nrf_gpio_pin_set(FPGA_RESET_PIN);
-	if (*start_addr != 0xFFFFFFFF) { //The flash isn't erased; there's a valid FPGA image in flash
-		config_FPGA(1);
-	}
-	else {
-		config_FPGA(0);
-	}
+
+	//If the flash is not erased there is a valid FPGA image in flash
+	if (*start_addr != 0xFFFFFFFF) config_FPGA(1);
+	else config_FPGA(0);
+
+	//Set up pins for communicating with FPGA
 	nrf_gpio_pin_clear(FPGA_RESET_PIN);
 	nrf_gpio_pin_clear(CHIP_RESET_PIN);
 	nrf_delay_ms(3);
@@ -384,18 +382,14 @@ int main(void)
 	nrf_gpio_pin_set(CHIP_RESET_PIN);
 
 	//Initialize SPI
-    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
-    	spi_config.ss_pin               = SPI_CS_PIN;
-    	spi_config.mode					= NRF_DRV_SPI_MODE_0;
-    nrf_drv_spi_init(&spi, &spi_config, NULL);
+	nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
+	spi_config.ss_pin               = SPI_CS_PIN;
+	spi_config.mode					= NRF_DRV_SPI_MODE_0;
+	nrf_drv_spi_init(&spi, &spi_config, NULL);
 
-	for (i=0;i<1024;i++) { //initialize SPI FIFO buffer
-		transmit_to_chip[i] = 0;
-	}
+	for (i=0;i<1024;i++) transmit_to_chip[i] = 0; //initialize SPI FIFO buffer
 
-	if(!nrf_drv_gpiote_is_init())	{
-			nrf_drv_gpiote_init();
-	}
+	if(!nrf_drv_gpiote_is_init())	nrf_drv_gpiote_init();
 
 
 	nrf_drv_gpiote_in_config_t config = GPIOTE_CONFIG_IN_SENSE_LOTOHI(true); //configure input pin using high frequency clocks for maximum responsiveness
@@ -403,177 +397,164 @@ int main(void)
 	nrf_drv_gpiote_in_init(26, &config, in_pin_handler); //set watch on pin 26 calling in_pin_handler on pin state change from low to high
 	nrf_drv_gpiote_in_event_enable(26, true);
 
-	//Start ESB reception
+
+	//Setup and start ESB reception
 	tx_payload.length = 1;
 	tx_payload.data[0] = packetid;
 	nrf_esb_start_rx();
 
+	nrf_drv_timer_enable(&TIMER_TX); //Start watchdog timer
+
+}
+
+
+int main(void)
+{
+
+	////////////////////////////////////////////
+	// VARIABLES
+	///////////////////////////////////////////
+	int i=0;
+	unsigned int fpgaimage_intcount = 0;
+	uint32_t tmp = 0;
+
+	init();
 
 	SEGGER_RTT_printf(0,"Senseback bluetooth (ESB) starting\n");
-	nrf_drv_timer_enable(&TIMER_TX); //Start watchdog timer
+
 	while(true) {
 		if (readpackets_flag == 1) {
 			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) {
 				nrf_drv_timer_clear(&TIMER_TX);
 				//SEGGER_RTT_printf(0,"Packet received\n");
-				tx_fifo_size--;
-				if (tx_fifo_size <= 0) {
+
+				if (--tx_fifo_size <= 0) {
 					rxfifo_empty_payload.data[0] = packetid;
 					errcode = nrf_esb_write_payload(&rxfifo_empty_payload);
 					packetid++;
 					tx_fifo_size = 1;
 				}
 				//nrf_esb_flush_tx();
-				if (rx_payload.length%2 == 0) { //If payload contains even number of bytes then it is a data packet to be transmitted to chip
+				if (rx_payload.length%2 == 0)//If payload contains even number of bytes then it is a data packet to be transmitted to chip
+				{
 					//Transfer data to intermediate buffer
 					int length = rx_payload.length/2;
 
 					SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip\n",length);
 					for (i=0;i<length;i++) {
-						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i];
-						spibuffer_w_ptr++;
+						transmit_to_chip[spibuffer_w_ptr++] = rx_payload.data[2*i];
 						spibuffer_sz++;
 						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i+1];
-						if ((spibuffer_w_ptr+1) >= 1024) {
-							spibuffer_w_ptr = 0;
-							spibuffer_sz++;
-						}
-						else {
-							spibuffer_w_ptr++;
-							spibuffer_sz++;
-						}
-						if (spibuffer_w_ptr == spibuffer_r_ptr) {
-							//ERROR CONDITION WE ARE OVERWRITING UNSENT DATA; NOTIFY USER (TODO)
-						}
+						spibuffer_sz++;
+
+						if ((spibuffer_w_ptr) >= 1023) spibuffer_w_ptr = 0;
+						else spibuffer_w_ptr++;
+
+						if (spibuffer_w_ptr == spibuffer_r_ptr) ;//ERROR CONDITION WE ARE OVERWRITING UNSENT DATA; NOTIFY USER (TODO)
 					}
+
 					//Load SPI buffers and fire
 					spi_transaction();
 
 				}
-				else { //If payload contains odd number of bytes then it is a command packet
-					if (rx_payload.data[0] == 0x61) {
-						//Dummy command: used by TX to drain the RX esb FIFO
-						//Could use switch case here instead of (potentially) many if statements
+				else if (rx_payload.data[0] == 0x61) ;	//Dummy command: used by TX to drain the RX esb FIFO
+				else if ((rx_payload.data[0] == 0x71) && (rx_payload.data[1] == 0x71) && (rx_payload.data[2] == 0x71)) //QUERY COMMAND ("qqq" ): flushes the current SPI buffer
+					//into the next packet payload to be sent. q = 0x71 = 113
+				{
+					tx_payload.data[0] = packetid;
 
+					if (tx_payload.length > 1 && tx_payload.length <= 32)
+					{
+						for (i=tx_payload.length;i<32;i++) tx_payload.data[i] = 0;
+						tx_payload.length = 33;
+						errcode = nrf_esb_write_payload(&tx_payload);
 					}
-					else if ((rx_payload.data[0] == 0x71) && (rx_payload.data[1] == 0x71) && (rx_payload.data[2] == 0x71)) {
-						//QUERY COMMAND ("QQ"): flushes the current SPI buffer into the next packet payload to be sent
 
-						if (tx_payload.length > 1 && tx_payload.length <= 32) {
-							for (i=tx_payload.length;i<32;i++) {
-								tx_payload.data[i] = 0;
-							}
-							tx_payload.length = 33;
-							tx_payload.data[0] = packetid;
-							errcode = nrf_esb_write_payload(&tx_payload);
-							if (errcode != 0) {
-								i = -1;
-							}
-							else {
-								tx_fifo_size++;
-								packetid++;
-							}
-							for (i=0;i<tx_payload.length;i++) {
-								tx_payload.data[i] = 0;
-							}
-							tx_payload.length = 1;
-						}
-						else if (tx_payload.length > 32) {
-							tx_payload.data[0] = packetid;
-							errcode = nrf_esb_write_payload(&tx_payload);
-							if (errcode != 0) {
-								i = -1;
-								//TODO: pop tx fifo and instead insert a payload to alert TX that RX tx FIFO is full, on next transmission
-							}
-							else {
-								tx_fifo_size++;
-								packetid++;
-							}
-							for (i=0;i<tx_payload.length;i++) {
-								tx_payload.data[i] = 0;
-							}
-							tx_payload.length = 1;
-						}
+					else if (tx_payload.length > 32) errcode = nrf_esb_write_payload(&tx_payload);
 
+					if (errcode == 0) //TODO: pop tx fifo and instead insert a payload to alert TX that RX tx FIFO is full, on next transmission
+					{
+						tx_fifo_size++;
+						packetid++;
+					}
 
+					for (i=0;i<tx_payload.length;i++) tx_payload.data[i] = 0;
+					tx_payload.length = 1;
 
+				}
+				else if ((rx_payload.data[0] == 0x12) && (rx_payload.data[1] == 0x35) && (rx_payload.data[2] == 0x37))//Reset (on TX boot and manual reset)
+				{
+					nrf_gpio_pin_clear(CHIP_RESET_PIN); //Reset chip
+					nrf_delay_ms(200);
+					NVIC_SystemReset();
+				}
+				else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB))  //Begin fpga image upload
+				{
+					fpga_checksum = 0;
+					fpgaimage_intcount = 0;
+					fpga_accept_flag = 2;
+					nrf_delay_ms(200);
+					init_flash(1);
+					validation_payload.data[0] = packetid;
+					validation_payload.data[3] = 0x01;
+					nrf_esb_write_payload(&validation_payload);
+					tx_fifo_size++;
+					packetid++;
+					validation_payload.data[3] = 0x00;
+					debug_flag++;
+				}
+				else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xCC)) //Validate fpga image
+				{
+					fpga_accept_flag = 1;
+					tmp = *((uint32_t*)(rx_payload.data+3));
+					//if (fpgaimage_intcount != FPGAIMAGE_SIZE) {fpga_accept_flag = 0;}
+					if (fpga_checksum != tmp) {fpga_accept_flag = 0;}
+					if (fpga_accept_flag == 1) {
+						flash_array_write((uint32_t *)(start_addr),&rx_payload.data[3],2,&fpga_checksum);
+						validation_payload.data[3] = 0x01;
+						validation_payload.data[0] = packetid;
+						nrf_esb_write_payload(&validation_payload);
+						tx_fifo_size++;
+						packetid++;
+						validation_payload.data[3] = 0x00;
 					}
 					else {
-						if (rx_payload.data[0] == 0x12 && rx_payload.data[1] == 0x35 && rx_payload.data[2] == 0x37) {
-							//Reset command: received when TX is booted, or when manual reset of RX is needed.
-							//Reset actions: reset FPGA, reset chip, flush RX and TX FIFO, reinitialize SPI, set FIFO counter to 0
-							//Note: can be done with full reset of MCU
-							nrf_gpio_pin_clear(CHIP_RESET_PIN);
-							nrf_delay_ms(200);
-							NVIC_SystemReset();
-						}
-						if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xBB)) { //Command: begin fpga image upload
-							fpga_checksum = 0;
-							fpgaimage_intcount = 0;
-							fpga_accept_flag = 2;
-							nrf_delay_ms(200);
-							init_flash(1);
-							validation_payload.data[0] = packetid;
-							validation_payload.data[3] = 0x01;
-							nrf_esb_write_payload(&validation_payload);
-							tx_fifo_size++;
-							packetid++;
-							validation_payload.data[3] = 0x00;
-							debug_flag++;
-						}
-						else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A) && (rx_payload.data[2] == 0xCC)) { //Command: validate fpga image
-							fpga_accept_flag = 1;
-							tmp = *((uint32_t*)(rx_payload.data+3));
-							//if (fpgaimage_intcount != FPGAIMAGE_SIZE) {fpga_accept_flag = 0;}
-							if (fpga_checksum != tmp) {fpga_accept_flag = 0;}
-							if (fpga_accept_flag == 1) {
-								flash_array_write((uint32_t *)(start_addr),&rx_payload.data[3],2,&fpga_checksum);
-								validation_payload.data[3] = 0x01;
-								validation_payload.data[0] = packetid;
-								nrf_esb_write_payload(&validation_payload);
-								tx_fifo_size++;
-								packetid++;
-								validation_payload.data[3] = 0x00;
-							}
-							else {
-								fpga_checksum = 0;
-								fpgaimage_intcount = 0;
-								nrf_delay_ms(200);
-								init_flash(1);
-								validation_payload.data[0] = packetid;
-								nrf_esb_write_payload(&validation_payload);
-								tx_fifo_size++;
-								packetid++;
-								validation_payload.data[3] = 0x00;
-							}
-
-						}
-						else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A)) { //Packet is fpga image data
-							if (fpga_accept_flag == 2) {
-								flash_array_write((uint32_t *)(start_addr+fpgaimage_intcount+2),&rx_payload.data[3],rx_payload.data[2],&fpga_checksum);
-								//nrf_delay_ms(100);
-								fpgaimage_intcount += rx_payload.data[2];
-								validation_payload.data[3] = 0x01;
-								validation_payload.data[0] = packetid;
-								nrf_esb_write_payload(&validation_payload);
-								tx_fifo_size++;
-								packetid++;
-								debug_flag = 1;
-							}
-							else {
-								validation_payload.data[3] = 0x00;
-								validation_payload.data[0] = packetid;
-								nrf_esb_write_payload(&validation_payload);
-								tx_fifo_size++;
-								packetid++;
-							}
-							validation_payload.data[3] = 0x00;
-						}
-						else {
-
-						}
+						fpga_checksum = 0;
+						fpgaimage_intcount = 0;
+						nrf_delay_ms(200);
+						init_flash(1);
+						validation_payload.data[0] = packetid;
+						nrf_esb_write_payload(&validation_payload);
+						tx_fifo_size++;
+						packetid++;
+						validation_payload.data[3] = 0x00;
 					}
+
 				}
+				else if ((rx_payload.data[0] == 0xFB) && (rx_payload.data[1] == 0x9A)) { //Packet is fpga image data
+					if (fpga_accept_flag == 2) {
+						flash_array_write((uint32_t *)(start_addr+fpgaimage_intcount+2),&rx_payload.data[3],rx_payload.data[2],&fpga_checksum);
+						//nrf_delay_ms(100);
+						fpgaimage_intcount += rx_payload.data[2];
+						validation_payload.data[3] = 0x01;
+						validation_payload.data[0] = packetid;
+						nrf_esb_write_payload(&validation_payload);
+						tx_fifo_size++;
+						packetid++;
+						debug_flag = 1;
+					}
+					else {
+						validation_payload.data[3] = 0x00;
+						validation_payload.data[0] = packetid;
+						nrf_esb_write_payload(&validation_payload);
+						tx_fifo_size++;
+						packetid++;
+					}
+					validation_payload.data[3] = 0x00;
+				}
+				else SEGGER_RTT_printf(0,"UNRECOGNISED PACKET ERROR\n");
+
+
 			}
 			//No more packets in FIFO to be read
 			readpackets_flag = 0;
