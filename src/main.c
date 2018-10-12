@@ -38,7 +38,7 @@
 #include "incbin.h"
 #include "flashwriting.h"
 #include "SEGGER_RTT.h"
-
+#include "nrf_drv_timer.h"
 
 
 INCBIN(FPGAimg, "FPGAimage.bin");
@@ -76,6 +76,10 @@ static nrf_esb_payload_t validation_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x00, 0x
 
 //Other variables
 static uint32_t errcode;
+
+//Instantiate timer (for use during recording to repeatedly query the device)
+const nrf_drv_timer_t TIMER_TX = NRF_DRV_TIMER_INSTANCE(3);
+
 
 //Start system high freq clock
 void clocks_start( void )
@@ -121,6 +125,7 @@ void esb_init( void )
     nrf_esb_config.event_handler            = nrf_esb_event_handler;
     nrf_esb_config.selective_auto_ack       = false;
     nrf_esb_config.retransmit_count			= 5;
+    nrf_esb_config.tx_output_power			= NRF_ESB_TX_POWER_4DBM;
     //nrf_esb_config.retransmit_delay			= 500;
 
     nrf_esb_init(&nrf_esb_config);
@@ -326,16 +331,41 @@ void spi_transaction() {
 	spitransaction_flag = 0;
 }
 
+
+void timer_event_handler(nrf_timer_event_t event_type, void* p_context)
+{
+	uint32_t 	interrupts;
+    switch(event_type)
+    {
+        case NRF_TIMER_EVENT_COMPARE0: {
+        	nrf_esb_get_clear_interrupts	(&interrupts);
+			break;
+        }
+        default:
+            //Do nothing.
+            break;
+    }
+}
+
 int main(void)
 {
 		int i=0;
 		unsigned int fpgaimage_intcount = 0;
 		uint32_t tmp = 0;
+		uint32_t time_ms = 1000; //Timer interval (query rate during recording)
+		uint32_t time_ticks;
+		uint32_t err_code;
+		err_code = nrf_drv_timer_init(&TIMER_TX, NULL, timer_event_handler);
+		APP_ERROR_CHECK(err_code);
+		time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_TX, time_ms);
+		nrf_drv_timer_extended_compare(&TIMER_TX, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
+
 
 		SEGGER_RTT_Init();
 	//Start clocks and init ESB
 	clocks_start();
 	esb_init();
+	SEGGER_RTT_printf(0,"Senseback Implant starting\n");
 
 	nrf_gpio_pin_dir_set(CHIP_RESET_PIN,NRF_GPIO_PIN_DIR_OUTPUT);
 	init_flash(0); //Call the function to initialize flash variables (start address location etc) without erasing any flash.
@@ -378,9 +408,14 @@ int main(void)
 	tx_payload.data[0] = packetid;
 	nrf_esb_start_rx();
 
+
+	SEGGER_RTT_printf(0,"Senseback bluetooth (ESB) starting\n");
+	nrf_drv_timer_enable(&TIMER_TX); //Start watchdog timer
 	while(true) {
 		if (readpackets_flag == 1) {
 			while (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS) {
+				nrf_drv_timer_clear(&TIMER_TX);
+				//SEGGER_RTT_printf(0,"Packet received\n");
 				tx_fifo_size--;
 				if (tx_fifo_size <= 0) {
 					rxfifo_empty_payload.data[0] = packetid;
@@ -393,7 +428,7 @@ int main(void)
 					//Transfer data to intermediate buffer
 					int length = rx_payload.length/2;
 
-					SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip",length);
+					SEGGER_RTT_printf(0,"Sending %d 16 bit words to chip\n",length);
 					for (i=0;i<length;i++) {
 						transmit_to_chip[spibuffer_w_ptr] = rx_payload.data[2*i];
 						spibuffer_w_ptr++;

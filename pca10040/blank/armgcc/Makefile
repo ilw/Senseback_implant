@@ -37,8 +37,8 @@ remduplicates = $(strip $(if $1,$(firstword $1) $(call remduplicates,$(filter-ou
 
 #source common to all targets
 C_SOURCE_FILES += \
-$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/system_nrf52.c) \
 $(abspath ../../../src/main.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/system_nrf52.c) \
 $(abspath ../../../src/flashwriting.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/delay/nrf_delay.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/common/nrf_drv_common.c) \
@@ -49,9 +49,11 @@ $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_erro
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_error_weak.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/app_util_platform.c) \
 $(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util/nrf_assert.c) \
+$(abspath ../../../../nRF5_SDK_canopy_project/components/drivers_nrf/timer/nrf_drv_timer.c) \
 $(abspath ../../../external/RTT/SEGGER_RTT.c) \
 $(abspath ../../../external/RTT/SEGGER_RTT_printf.c) \
 $(abspath ../../../external/Syscalls/RTT_Syscalls_GCC.c) \
+
 
 #assembly files common to all targets
 ASM_SOURCE_FILES  += \
@@ -81,7 +83,7 @@ INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/librarie
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/util)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/properitary_rf/esb)
 INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/toolchain/CMSIS/Include)
-
+INC_PATHS += -I$(abspath ../../../../nRF5_SDK_canopy_project/components/libraries/timer) 
 
 
 OBJECT_DIRECTORY = _build
