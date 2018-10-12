@@ -255,6 +255,7 @@ void config_FPGA(int newimage_flag)
 	nrf_gpio_cfg_default(SPI0_CONFIG_MOSI_PIN );
 
 	if   (	nrf_gpio_pin_read(CDONE)) {
+		SEGGER_RTT_printf(0,"FPGA successfully written\n");
 		return;// PASS if CDONE is true -
 	}
 	else {
@@ -268,28 +269,29 @@ void config_FPGA(int newimage_flag)
 
 void spi_transaction() {
 	int i;
-	while (spibuffer_sz > 0 || nrf_drv_gpiote_in_is_set(26)) {
-		if (spibuffer_sz > 0) {
+	while (spibuffer_sz > 0 || nrf_drv_gpiote_in_is_set(26)) { //If there is data to tx or rx from chip
+		if (spibuffer_sz > 0) { //if tx, load the tx buffers
 			m_tx_buf[0] = transmit_to_chip[spibuffer_r_ptr];
 			spibuffer_r_ptr++;
 			spibuffer_sz--;
 			m_tx_buf[1] = transmit_to_chip[spibuffer_r_ptr];
 			spibuffer_r_ptr++;
 			spibuffer_sz--;
-			if (spibuffer_r_ptr >= 1024) {
+			if (spibuffer_r_ptr >= 1024) { //wrap
 				spibuffer_r_ptr = 0;
 			}
 			if (spibuffer_sz < 0) {
 				//ERROR CONDITION WE HAVE SOMEHOW OVERREAD THE BUFFER; NOTIFY USER (TODO)
 			}
 		}
-		else {
+		else { //Send dummy word
 			m_tx_buf[0] = 0;
 			m_tx_buf[1] = 0;
 		}
-		nrf_drv_spi_transfer(&spi, m_tx_buf, m_length, m_rx_buf, m_length);
+		nrf_drv_spi_transfer(&spi, m_tx_buf, m_length, m_rx_buf, m_length); //Do the transfer
+		SEGGER_RTT_printf(0,"SPI out %x %x, SPI in %x %x\n", m_tx_buf[0],m_tx_buf[1],m_rx_buf[0],m_rx_buf[1]);
 
-		if(false){
+		if(false){ //code below was to suppress transmission of zero filled packets
 		//if (m_rx_buf[0] == 0x00 && m_rx_buf[1] == 0x00) {
 			//Data is all zeroes, do nothing
 		}
@@ -300,7 +302,9 @@ void spi_transaction() {
 			tx_payload.length++;
 		}
 
+		SEGGER_RTT_printf(0,"payload length %d, new content %x %x\n", tx_payload.length,m_rx_buf[0],m_rx_buf[1]);
 		if (tx_payload.length>=RX_PAYLOAD_LENGTH) { //if buffer full, push packet to FIFO
+			SEGGER_RTT_printf(0,"Buffer full. sending to FIFO\n");
 			tx_payload.data[0] = packetid;
 			errcode = nrf_esb_write_payload(&tx_payload);
 			if (errcode != 0) {
