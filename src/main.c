@@ -298,10 +298,7 @@ void spi_transaction() {
 		nrf_drv_spi_transfer(&spi, m_tx_buf, m_length, m_rx_buf, m_length); //Do the transfer
 		SEGGER_RTT_printf(0,"SPI out %x %x, SPI in %x %x\n", m_tx_buf[0],m_tx_buf[1],m_rx_buf[0],m_rx_buf[1]);
 
-		if(false){ //code below was to suppress transmission of zero filled packets
-		//if (m_rx_buf[0] == 0x00 && m_rx_buf[1] == 0x00) {
-			//Data is all zeroes, do nothing
-		}
+		if((m_rx_buf[0]>=32)  && (m_rx_buf[0]<64)); //suppress electrode monitor data - its too fast & its wrong...
 		else {
 			tx_payload.data[tx_payload.length] = m_rx_buf[0];
 			tx_payload.length++;
