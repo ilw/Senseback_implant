@@ -1,3 +1,13 @@
 *.o
 pca10040/blank/armgcc/_build/
 _build/
+resources/hex/blinky_s132_pca10040.hex
+resources/hex/blinky_s132_pca10036.hex
+resources/hex/blinky_s130_pca20006.hex
+resources/hex/blinky_s130_pca10031.hex
+resources/hex/blinky_s130_pca10028.hex
+resources/hex/blinky_blank_pca20006.hex
+resources/hex/blinky_blank_pca10040.hex
+resources/hex/blinky_blank_pca10036.hex
+resources/hex/blinky_blank_pca10031.hex
+resources/hex/blinky_blank_pca10028.hex
