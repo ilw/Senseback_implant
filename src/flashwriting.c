@@ -1,11 +1,27 @@
 
 	
-#include "bsp.h"
-#include "flashwriting.h"
 
-#ifdef USE_BOOTLOADER
-	#include "dfu_types.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include "nrf.h"
+#include "flashwriting.h"
+#include "nrf_mbr.h"
+#ifdef NRF52
+#define FLASH_PAGE_SIZE (MBR_PAGE_SIZE_IN_WORDS * sizeof(uint32_t))
+#define FPGA_IMAGE_PAGES (uint32_t)(FPGA_IMAGE_SIZE/FLASH_PAGE_SIZE) //0x1000 is the page size on NRF52
+#define NRF_DFU_APP_DATA_AREA_SIZE FLASH_PAGE_SIZE*FPGA_IMAGE_PAGES
 #endif
+
+#ifdef SDK15_2
+#define BOOTLOADER_REGION_START 0x00078000
+#endif
+
+#include "nrf_dfu_types.h"
+
+
+
+
+
 /******************************************************
 * FUNCTION DECLARATIONS
 *******************************************************/
@@ -82,13 +98,11 @@ void init_flash(int erase)
 {
 	int j;
 	uint32_t * addr;
-	uint32_t  pg_size = NRF_FICR->CODEPAGESIZE;
-	uint32_t  start_pg_num = NRF_FICR->CODESIZE - (FPGA_IMAGE_SIZE/pg_size + 1);  // Use last pages in flash.
-#ifdef USE_BOOTLOADER
-	start_pg_num = (BOOTLOADER_REGION_START/pg_size) - (FPGA_IMAGE_SIZE/pg_size + 1);  // Use last pages in flash with 14 pages
-	//(CHECK if bootloader size consistent and page size consistent. Might be NRF52832 specific) reserved for bootloader.
-#endif
+	uint32_t  pg_size = CODE_PAGE_SIZE;
+	uint32_t start_pg_num = (BOOTLOADER_REGION_START/pg_size) - (uint32_t)(FPGA_IMAGE_SIZE/pg_size + 1);  // Use last pages in flash with 14 pages
 
+
+	//while (BOOTLOADER_REGION_START != (DFU_REGION_END)) {}; //catch any errors wrt bootloader address
 	start_addr = (uint32_t *) (start_pg_num * pg_size);
 
 	//Erase the pages

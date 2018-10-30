@@ -58,7 +58,11 @@ INC_FOLDERS += \
  $(SDK_ROOT)/components/libraries/experimental_section_vars \
  $(SDK_ROOT)/components/libraries/strerror \
  $(SDK_ROOT)/components/boards \
-
+ $(SDK_ROOT)/components/libraries/bootloader/dfu \
+ $(SDK_ROOT)/components/softdevice/s132/headers/nrf52 \
+ $(SDK_ROOT)/components/softdevice/s132/headers \
+  
+ 
 # Libraries common to all targets
 LIB_FILES += \
 
@@ -71,6 +75,7 @@ OPT = -O3 -g3
 CFLAGS += $(OPT)
 CFLAGS += -DBOARD_CUSTOM
 CFLAGS += -DINCLUDE_FPGA_IMAGE
+CFLAGS += -DSDK15_2
 #CFLAGS += -DUSE_BOOTLOADER
 CFLAGS += -DBSP_DEFINES_ONLY
 CFLAGS += -DCONFIG_GPIO_AS_PINRESET

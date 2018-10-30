@@ -1,5 +1,5 @@
 //FPGA programming image variables here
-#define FPGAIMAGE_SIZE 71337
+//#define FPGAIMAGE_SIZE 71337   //Image size varies slightly. not a good thing to check
 
 //Pin connections for schematics_test board (SENSEBACK)
 //SPI:    CS - PIN 9		CSK - PIN 31    MOSI - PIN 10		MISO - PIN 30
