@@ -63,6 +63,7 @@ static volatile uint32_t spitransaction_flag = 0, readpackets_flag = 0, fpga_acc
 static volatile int spibuffer_sz = 0;
 static volatile uint8_t packetid = 0;
 static volatile int8_t tx_fifo_size = 0;
+static volatile uint8_t fpga_programmed =0;
 
 //static volatile uint32_t *spi_rx_flag_ptr = &spi_rx_flag, *spitransaction_flag_ptr = &spitransaction_flag, *spi_tx_flag_ptr = &spi_tx_flag;
 
@@ -268,12 +269,14 @@ void config_FPGA(int newimage_flag)
 
 	if   (	nrf_gpio_pin_read(CDONE)) {
 		SEGGER_RTT_printf(0,"FPGA successfully written\n");
+		fpga_programmed =1;
 		return;// PASS if CDONE is true -
 	}
 	else {
 		validation_payload.data[3] = 0x00;
 		validation_payload.data[0] = packetid;
 		nrf_esb_write_payload(&validation_payload);
+		fpga_programmed=0;
 		tx_fifo_size++;
 		packetid++;
 	}
@@ -574,7 +577,7 @@ int main(void)
 			spi_transaction();
 		}
 
-
+		if (!fpga_programmed) for (i=tx_payload.length;i<32;i++) tx_payload.data[i] = 255;
 	    __WFE();
 	    __SEV();
 	    __WFE();

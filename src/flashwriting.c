@@ -1,7 +1,11 @@
 
 	
 #include "bsp.h"
+#include "flashwriting.h"
 
+#ifdef USE_BOOTLOADER
+	#include "dfu_types.h"
+#endif
 /******************************************************
 * FUNCTION DECLARATIONS
 *******************************************************/
@@ -79,7 +83,12 @@ void init_flash(int erase)
 	int j;
 	uint32_t * addr;
 	uint32_t  pg_size = NRF_FICR->CODEPAGESIZE;
-	uint32_t  start_pg_num = NRF_FICR->CODESIZE - (71339/pg_size + 1);  // Use last pages in flash
+	uint32_t  start_pg_num = NRF_FICR->CODESIZE - (FPGA_IMAGE_SIZE/pg_size + 1);  // Use last pages in flash.
+#ifdef USE_BOOTLOADER
+	start_pg_num = (BOOTLOADER_REGION_START/pg_size) - (FPGA_IMAGE_SIZE/pg_size + 1);  // Use last pages in flash with 14 pages
+	//(CHECK if bootloader size consistent and page size consistent. Might be NRF52832 specific) reserved for bootloader.
+#endif
+
 	start_addr = (uint32_t *) (start_pg_num * pg_size);
 
 	//Erase the pages
@@ -107,7 +116,8 @@ bool flash_array_write(uint32_t * address, uint8_t dataIn[], uint32_t dataLength
 	uint32_t  * data;
 	int j;
 
-	if ((dataLength*4)%4 !=0) return false; //Had to make temporary change while I figure out how to pass actual number of bytes instead of number of ints
+	if ((dataLength*4)%4 !=0) return false; //Had to make temporary change while I figure out how to pass actual number of bytes instead of number of ints.
+	//Would the line above ever fail?
 	data = (uint32_t *) dataIn;  //Is this ok?
 	
 	for (j=0;j<dataLength;j++)
