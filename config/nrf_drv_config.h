@@ -101,7 +101,7 @@
 #endif
 
 
-#define TIMER_COUNT (TIMER0_ENABLED + TIMER1_ENABLED + TIMER2_ENABLED + TIMER3_ENABLED + TIMER4_ENABLED)
+//#define TIMER_COUNT (TIMER0_ENABLED + TIMER1_ENABLED + TIMER2_ENABLED + TIMER3_ENABLED + TIMER4_ENABLED)
 
 /* RTC */
 #define RTC0_ENABLED 0
@@ -135,7 +135,7 @@
 #endif
 
 
-#define RTC_COUNT                (RTC0_ENABLED+RTC1_ENABLED+RTC2_ENABLED)
+//#define RTC_COUNT                (RTC0_ENABLED+RTC1_ENABLED+RTC2_ENABLED)
 
 #define NRF_MAXIMUM_LATENCY_US 2000
 
@@ -201,10 +201,11 @@
 #define PWM2_INSTANCE_INDEX (PWM0_ENABLED + PWM1_ENABLED)
 #endif
 
-#define PWM_COUNT   (PWM0_ENABLED + PWM1_ENABLED + PWM2_ENABLED)
+//#define PWM_COUNT   (PWM0_ENABLED + PWM1_ENABLED + PWM2_ENABLED)
 
 /* SPI */
 #define SPI0_ENABLED 1
+#define SPI_PRESENT
 
 #if (SPI0_ENABLED == 1)
 #define SPI0_USE_EASY_DMA 1
@@ -243,7 +244,7 @@
 #define SPI2_INSTANCE_INDEX (SPI0_ENABLED + SPI1_ENABLED)
 #endif
 
-#define SPI_COUNT   (SPI0_ENABLED + SPI1_ENABLED + SPI2_ENABLED)
+//#define SPI_COUNT   (SPI0_ENABLED + SPI1_ENABLED + SPI2_ENABLED)
 
 /* SPIS */
 #define SPIS0_ENABLED 0
@@ -279,7 +280,7 @@
 #define SPIS2_INSTANCE_INDEX (SPIS0_ENABLED + SPIS1_ENABLED)
 #endif
 
-#define SPIS_COUNT   (SPIS0_ENABLED + SPIS1_ENABLED + SPIS2_ENABLED)
+//#define SPIS_COUNT   (SPIS0_ENABLED + SPIS1_ENABLED + SPIS2_ENABLED)
 
 /* UART */
 #define UART0_ENABLED 0
@@ -327,7 +328,7 @@
 #define TWI1_INSTANCE_INDEX      (TWI0_ENABLED)
 #endif
 
-#define TWI_COUNT                (TWI0_ENABLED + TWI1_ENABLED)
+//#define TWI_COUNT                (TWI0_ENABLED + TWI1_ENABLED)
 
 /* TWIS */
 #define TWIS0_ENABLED 0
@@ -354,7 +355,7 @@
     #define TWIS1_INSTANCE_INDEX      (TWIS0_ENABLED)
 #endif
 
-#define TWIS_COUNT (TWIS0_ENABLED + TWIS1_ENABLED)
+//#define TWIS_COUNT (TWIS0_ENABLED + TWIS1_ENABLED)
 /* For more documentation see nrf_drv_twis.h file */
 #define TWIS_ASSUME_INIT_AFTER_RESET_ONLY 0
 /* For more documentation see nrf_drv_twis.h file */
@@ -459,6 +460,7 @@
 #define I2S_CONFIG_RATIO        NRF_I2S_RATIO_256X
 #endif
 
-#include "nrf_drv_config_validation.h"
+
+#include "sdk_validation.h"
 
 #endif // NRF_DRV_CONFIG_H

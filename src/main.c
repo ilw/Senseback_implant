@@ -39,6 +39,8 @@
 #include "flashwriting.h"
 #include "SEGGER_RTT.h"
 #include "nrf_drv_timer.h"
+#include "nrf_drv_config.h"
+
 
 #ifdef INCLUDE_FPGA_IMAGE
 	INCBIN(FPGAimg, "FPGAimage.bin");
@@ -395,10 +397,14 @@ void init()
 	nrf_gpio_pin_set(CHIP_RESET_PIN);
 
 	//Initialize SPI
-	nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
+//	nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG(SPI_INSTANCE);
+	nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
 	spi_config.ss_pin               = SPI_CS_PIN;
+	spi_config.sck_pin				= SPI0_CONFIG_SCK_PIN;
+	spi_config.miso_pin               = SPI0_CONFIG_MISO_PIN;
+	spi_config.mosi_pin               = SPI0_CONFIG_MOSI_PIN;
 	spi_config.mode					= NRF_DRV_SPI_MODE_0;
-	nrf_drv_spi_init(&spi, &spi_config, NULL);
+	nrf_drv_spi_init(&spi, &spi_config, NULL, NULL);
 
 	for (i=0;i<1024;i++) transmit_to_chip[i] = 0; //initialize SPI FIFO buffer
 
