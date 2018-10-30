@@ -40,9 +40,9 @@
 #include "SEGGER_RTT.h"
 #include "nrf_drv_timer.h"
 
-
-INCBIN(FPGAimg, "FPGAimage.bin");
-
+#ifdef INCLUDE_FPGA_IMAGE
+	INCBIN(FPGAimg, "FPGAimage.bin");
+#endif
 //Make Microcontroller NFC pins usable as GPIOs
 const uint32_t __attribute__((section (".uicr"))) UICR_ADDR_0x20C = 0xFFFFFFFE;
 //const uint32_t     __attribute__((at(0x1000120C))) __attribute__((used)) = 0xFFFFFFFE;
@@ -239,6 +239,8 @@ void config_FPGA(int newimage_flag)
 
 		//fpgaimage_addr = (uint8_t*)(start_addr+2);
 	}
+
+#ifdef INCLUDE_FPGA_IMAGE
 	else {
 		//fpgaimage_size = gFPGAimgSize;
 		//fpgaimage_addr = gFPGAimgData;
@@ -247,6 +249,9 @@ void config_FPGA(int newimage_flag)
 			bitbang_spi(*(gFPGAimgData+i));
 		}
 	}
+#endif
+
+
 	//Program FPGA (call spi_bitbang) here
 	//Send file 1 byte at a time
 
@@ -376,8 +381,9 @@ void init()
 
 	//If the flash is not erased there is a valid FPGA image in flash
 	if (*start_addr != 0xFFFFFFFF) config_FPGA(1);
+#ifdef INCLUDE_FPGA_IMAGE
 	else config_FPGA(0);
-
+#endif
 	//Set up pins for communicating with FPGA
 	nrf_gpio_pin_clear(FPGA_RESET_PIN);
 	nrf_gpio_pin_clear(CHIP_RESET_PIN);
